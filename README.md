@@ -1,66 +1,59 @@
-# Ask Me About Samuel — API
+# Ask Me About Samuel — AI Portfolio Assistant (API)
 
-A small Python (FastAPI) backend that answers questions about Samuel using the Claude API.
-It's the Python counterpart to the Cadence support bot, and the first building block of the
-Living Portfolio.
+A Python backend that powers an AI assistant you can **interview about my experience**. Ask it about my skills, my projects, or whether I'm a fit for a role, and it answers from a curated knowledge base using the Claude API. Built with FastAPI and designed to plug straight into my portfolio website.
 
-## What's in here
+This is Phase 1 of my "Living Portfolio" — a portfolio that demonstrates my skills by being built with them.
 
-- `main.py` — the FastAPI app (a `/health` check + a `/chat` endpoint)
-- `about_me.py` — the knowledge the bot answers from (Claude's system prompt)
-- `test_main.py` — a starter pytest test
-- `requirements.txt` — the Python packages this project needs
-- `.env.example` — a template for your API key
+---
 
-## Setup (Windows)
+## What it does
 
-Open this folder in VS Code, then open a terminal (**Terminal → New Terminal**) and run these
-one at a time.
+- **Answers questions about me** — grounded in a real knowledge base, not made up. Ask "What's Samuel's experience with AI?" or "Is he a fit for a React role?" and get an accurate, on-brand answer.
+- **Won't invent details** — if something isn't in its knowledge, it says so and points you to reach out directly, instead of hallucinating.
+- **Typed, validated API** — every request and response is checked against a schema, so bad input gets a clear error automatically.
+- **Ready for the web** — CORS-enabled and structured so a frontend (my portfolio site) can call it directly.
 
-**1. Create a virtual environment** — a private package folder just for this project:
+## Architecture
+
+The frontend never touches the API key. The browser sends the conversation to this backend, which holds the key and calls Claude with a system prompt that defines who the assistant answers about.
 
 ```
+Portfolio site (frontend)  ──fetch──►  FastAPI  /chat  ──►  Claude API
+                                          │
+                              holds the API key + system prompt
+```
+
+- **`main.py`** — the FastAPI app: a `/health` check and a `/chat` endpoint, with typed Pydantic request/response models.
+- **`about_me.py`** — the assistant's knowledge, kept separate from the logic (so the content can change without touching the code). Roadmap: replace this with RAG over a document set.
+- **`test_main.py`** — an automated test (pytest).
+
+## Built with
+
+Python · FastAPI · Pydantic · Anthropic Claude API · Uvicorn · pytest
+
+## Run it locally
+
+```bash
+git clone https://github.com/samchill93/samuel-ai-api.git
+cd samuel-ai-api
+
+# create and activate a virtual environment (Windows)
 py -m venv venv
-```
-
-**2. Activate it** (you'll see `(venv)` appear at the start of your prompt):
-
-```
 .\venv\Scripts\activate
-```
 
-> If PowerShell blocks it with an "execution policy" error, run this once, then activate again:
-> ```
-> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-> ```
-
-**3. Install the packages:**
-
-```
 pip install -r requirements.txt
-```
 
-**4. Add your API key:** make a copy of `.env.example`, name the copy exactly `.env`, and paste
-your key from https://console.anthropic.com.
+# add your key: copy .env.example to .env and paste your key
+# get one at https://console.anthropic.com
 
-**5. Run the server:**
-
-```
 uvicorn main:app --reload
 ```
 
-Then open **http://localhost:8000/health** — you should see `{"status":"ok"}`.
-Interactive API docs are at **http://localhost:8000/docs**, where you can try the `/chat`
-endpoint right in the browser.
+Then open **http://localhost:8000/docs** for interactive API docs, or **http://localhost:8000/health** for a quick check. The `.env` file is git-ignored, so the API key stays private.
 
-**6. Run the test:**
+## Roadmap (the Living Portfolio)
 
-```
-pytest
-```
-
-## Next steps
-
-- Flesh out `about_me.py` so the bot really knows you.
-- Connect this API to the Monograph portfolio site's chat widget.
-- Later phases: RAG, evals, and observability — the Living Portfolio roadmap.
+- **RAG** — retrieve answers from a real document set with source citations, instead of a static system prompt.
+- **Agentic mode** — let the assistant take actions via tool use, and expose it as an MCP server.
+- **Evals + observability** — measure answer accuracy and trace token cost and latency.
+- **Deployment** — ship the API to the cloud so the assistant works for anyone, anywhere.
