@@ -26,7 +26,7 @@ app = FastAPI(title="Ask Me About Samuel")
 # lock this down to your real site before deploying.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://living-portfolio-chi.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
