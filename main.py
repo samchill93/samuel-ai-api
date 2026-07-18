@@ -7,6 +7,8 @@ Coming from JavaScript/TypeScript? The comments point out the Python equivalents
 of things you already know.
 """
 
+import os                                            # read environment variables (e.g. allowed CORS origins)
+
 from anthropic import Anthropic                     # official Claude SDK for Python
 from dotenv import load_dotenv                       # loads the .env file into environment variables
 from fastapi import FastAPI, HTTPException           # the web framework (like Express, but typed)
@@ -21,12 +23,16 @@ load_dotenv()
 # The app object is what the server (uvicorn) runs. In Express you'd write: const app = express()
 app = FastAPI(title="Ask Me About Samuel")
 
-# CORS controls which websites may call this API from a browser. Your Monograph portfolio
-# site will call it later, so the browser needs permission. Wide open for local dev — we'll
-# lock this down to your real site before deploying.
+# CORS controls which websites may call this API from a browser. Production is locked to the
+# live portfolio site. Local development adds localhost origins through the CORS_ORIGINS
+# environment variable (set in .env, which is git-ignored). The default below is exactly the
+# production lock, so nothing changes in prod unless CORS_ORIGINS is set there deliberately.
+DEFAULT_ORIGINS = "https://living-portfolio-chi.vercel.app"
+allowed_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", DEFAULT_ORIGINS).split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://living-portfolio-chi.vercel.app"],
+    allow_origins=allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
