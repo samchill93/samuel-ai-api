@@ -30,3 +30,14 @@ CREATE TABLE IF NOT EXISTS chunks (
 -- HNSW builds incrementally (no training data needed) and is the modern default.
 CREATE INDEX IF NOT EXISTS chunks_embedding_hnsw
     ON chunks USING hnsw (embedding vector_cosine_ops);
+
+-- Inquiries submitted through the site's contact form (POST /inquiry).
+CREATE TABLE IF NOT EXISTS inquiries (
+    id               BIGINT      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name             TEXT        NOT NULL,
+    email            TEXT        NOT NULL,
+    company          TEXT,
+    package_interest TEXT,
+    message          TEXT        NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
