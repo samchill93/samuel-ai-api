@@ -28,6 +28,42 @@ def test_health_returns_ok():
     assert response.json() == {"status": "ok"}
 
 
+def test_version_returns_build_info():
+    response = client.get("/version")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["sha"]            # non-empty commit id (or "dev" when run locally)
+    assert data["deployed_at"]    # ISO timestamp of when this process started
+
+
+def test_inquiry_rejects_invalid_email():
+    """Pydantic rejects a bad email with a 422 before the handler runs — no DB needed."""
+    r = client.post("/inquiry", json={"name": "A", "email": "not-an-email", "message": "hi"})
+    assert r.status_code == 422
+
+
+def test_inquiry_requires_name_and_message():
+    r = client.post("/inquiry", json={"email": "a@b.com"})
+    assert r.status_code == 422
+
+
+def test_inquiry_honeypot_is_silently_accepted():
+    """A filled honeypot returns 'received' without storing — the bot can't tell it was caught."""
+    r = client.post("/inquiry", json={
+        "name": "Bot", "email": "bot@spam.com", "message": "spam", "website": "http://spam"
+    })
+    assert r.status_code == 201
+    assert r.json() == {"status": "received"}
+
+
+def test_answer_cost_uses_haiku_pricing():
+    """Cost comes from real token counts and the Haiku price constants — no fabricated numbers."""
+    from main import _answer_cost_usd, HAIKU_INPUT_USD_PER_MTOK, HAIKU_OUTPUT_USD_PER_MTOK
+    assert _answer_cost_usd(1_000_000, 0) == HAIKU_INPUT_USD_PER_MTOK
+    assert _answer_cost_usd(0, 1_000_000) == HAIKU_OUTPUT_USD_PER_MTOK
+    assert 0 < _answer_cost_usd(1500, 200) < 0.01   # a real answer is a fraction of a cent
+
+
 # ----------------------------------------------------------------------------
 # Honesty guards
 # ABOUT_SAMUEL is organized into "## " sections. _section() grabs one section's
