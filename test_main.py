@@ -56,6 +56,22 @@ def test_inquiry_honeypot_is_silently_accepted():
     assert r.json() == {"status": "received"}
 
 
+def test_inquiry_without_database_url_fails_honestly(monkeypatch):
+    """No DATABASE_URL means the message cannot be stored, so it must not report success.
+
+    Also guards the leak: a psycopg connection error carries the database host and user,
+    and that must never reach the caller.
+    """
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    r = client.post("/inquiry", json={
+        "name": "Real Person", "email": "person@example.com", "message": "Hello",
+    })
+    assert r.status_code == 503
+    assert "received" not in r.text            # never claim a message was stored
+    assert "DATABASE_URL" not in r.text        # no config names
+    assert "postgres" not in r.text.lower()    # no driver or host detail
+
+
 def test_answer_cost_uses_haiku_pricing():
     """Cost comes from real token counts and the Haiku price constants — no fabricated numbers."""
     from main import _answer_cost_usd, HAIKU_INPUT_USD_PER_MTOK, HAIKU_OUTPUT_USD_PER_MTOK

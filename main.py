@@ -7,6 +7,7 @@ Coming from JavaScript/TypeScript? The comments point out the Python equivalents
 of things you already know.
 """
 
+import logging                                       # server-side error detail, never sent to the client
 import os                                            # read environment variables (e.g. allowed CORS origins)
 import subprocess                                    # local git SHA as a dev fallback for /version
 from datetime import datetime, timezone              # timestamps for /version
@@ -23,6 +24,8 @@ from about_me import ABOUT_SAMUEL                    # the knowledge the bot ans
 
 # Read ANTHROPIC_API_KEY (and anything else) from the .env file so it lands in the environment.
 load_dotenv()
+
+logger = logging.getLogger("samuel-ai-api")   # goes to Render's logs, not to the caller
 
 # The app object is what the server (uvicorn) runs. In Express you'd write: const app = express()
 app = FastAPI(title="Ask Me About Samuel")
@@ -166,15 +169,24 @@ def inquiry(request: InquiryRequest) -> InquiryResponse:
     if request.website:
         return InquiryResponse(status="received")
 
+    dsn = os.getenv("DATABASE_URL")
+    if not dsn:
+        # Missing configuration is not the caller's mistake, and pretending the message
+        # was received would silently lose it. Fail honestly instead.
+        raise HTTPException(status_code=503, detail="The inquiry store is not configured yet.")
+
     try:
-        with psycopg.connect(os.environ["DATABASE_URL"]) as conn, conn.cursor() as cur:
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO inquiries (name, email, company, package_interest, message) "
                 "VALUES (%s, %s, %s, %s, %s)",
                 (request.name, request.email, request.company, request.package_interest, request.message),
             )
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Could not store the inquiry: {error}")
+    except Exception:
+        # Never echo the driver's message to the client: a psycopg connection error can
+        # carry the database host and user from DATABASE_URL. Log it, return nothing.
+        logger.exception("inquiry insert failed")
+        raise HTTPException(status_code=500, detail="Could not store the inquiry.")
 
     return InquiryResponse(status="received")
 
