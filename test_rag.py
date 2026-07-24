@@ -31,10 +31,14 @@ def test_system_prompt_grounds_and_keeps_the_persona():
 
 
 # --- Citations + renumbering (the honest, touchable part) -------------------
+def _paths_titles(cites):
+    return [{"source_path": c["source_path"], "title": c["title"]} for c in cites]
+
+
 def test_finalize_returns_only_what_the_reply_cites():
     reply, cites = finalize_citations("Samuel is a Full-Stack AI Engineer [1].", HITS)
     assert reply == "Samuel is a Full-Stack AI Engineer [1]."
-    assert cites == [{"source_path": "profile.md", "title": "Profile"}]
+    assert _paths_titles(cites) == [{"source_path": "profile.md", "title": "Profile"}]
 
 
 def test_finalize_renumbers_and_dedupes_in_citation_order():
@@ -44,10 +48,16 @@ def test_finalize_renumbers_and_dedupes_in_citation_order():
         "Cadence is a chatbot [2]. Samuel builds them [1], as a former PM [3].", HITS
     )
     assert reply == "Cadence is a chatbot [1]. Samuel builds them [2], as a former PM [2]."
-    assert cites == [
+    assert _paths_titles(cites) == [
         {"source_path": "projects/cadence.md", "title": "Cadence"},
         {"source_path": "profile.md", "title": "Profile"},
     ]
+
+
+def test_finalize_includes_a_snippet_of_the_cited_text():
+    """Each citation carries a preview of its source, for the marker popover."""
+    _, cites = finalize_citations("Cadence is a chatbot [2].", HITS)
+    assert cites[0]["snippet"] == "Cadence is a support chatbot."
 
 
 def test_finalize_drops_out_of_range_markers():

@@ -117,6 +117,7 @@ class Usage(BaseModel):
 class Citation(BaseModel):
     source_path: str          # e.g. 'projects/cadence.md' — which corpus file the claim came from
     title: str | None = None
+    snippet: str | None = None   # a short preview of the cited text, shown next to the marker
 
 
 class ChatResponse(BaseModel):

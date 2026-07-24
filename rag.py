@@ -59,13 +59,20 @@ def finalize_citations(reply: str, hits: list[dict]) -> tuple[str, list[dict]]:
     dropped rather than shown as a citation.
     """
     order: list[str] = []            # source_path in first-citation order
-    meta: dict[str, dict] = {}       # source_path -> {source_path, title}
+    meta: dict[str, dict] = {}       # source_path -> {source_path, title, snippet}
     for match in _MARKER.finditer(reply):
         idx = int(match.group(1)) - 1
         if 0 <= idx < len(hits):
             source_path = hits[idx]["source_path"]
             if source_path not in meta:
-                meta[source_path] = {"source_path": source_path, "title": hits[idx]["title"]}
+                # Snippet = the first cited chunk's text, whitespace-collapsed and trimmed.
+                # It lets the widget preview a source next to the marker without scrolling.
+                snippet = " ".join(hits[idx]["content"].split())[:200]
+                meta[source_path] = {
+                    "source_path": source_path,
+                    "title": hits[idx]["title"],
+                    "snippet": snippet,
+                }
                 order.append(source_path)
     renumber = {source_path: i + 1 for i, source_path in enumerate(order)}
 
