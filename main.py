@@ -20,7 +20,9 @@ from fastapi import FastAPI, HTTPException           # the web framework (like E
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field      # typed, self-validating data models
 
-from about_me import ABOUT_SAMUEL                    # the knowledge the bot answers from
+from about_me import ABOUT_SAMUEL                    # the assistant's persona/voice shell
+from retrieve import retrieve, is_grounded           # RAG: find relevant corpus chunks
+from rag import build_system_prompt, cited_sources, REFUSAL  # ground the prompt + cite sources
 
 # Read ANTHROPIC_API_KEY (and anything else) from the .env file so it lands in the environment.
 load_dotenv()
@@ -112,9 +114,15 @@ class Usage(BaseModel):
     cost_usd: float
 
 
+class Citation(BaseModel):
+    source_path: str          # e.g. 'projects/cadence.md' — which corpus file the claim came from
+    title: str | None = None
+
+
 class ChatResponse(BaseModel):
     reply: str
-    usage: Usage        # token counts + computed cost for the honest cost footer
+    usage: Usage                        # token counts + computed cost for the honest cost footer
+    citations: list[Citation] = []      # the sources the answer actually cited (RAG, Module 1)
 
 
 class VersionResponse(BaseModel):
@@ -193,34 +201,55 @@ def inquiry(request: InquiryRequest) -> InquiryResponse:
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
-    """Send the conversation to Claude with a system prompt about Samuel, and return the reply."""
+    """Answer only from Samuel's corpus (RAG): retrieve the chunks relevant to the latest
+    question, ground the prompt on them, and cite the sources the reply actually used.
+    When the corpus doesn't cover the question, refuse honestly instead of guessing."""
 
-    # Turn our pydantic Message objects into the plain dicts the SDK expects.
-    # This is a "list comprehension" — Python's compact map:
-    #   [f(item) for item in items]   is like   items.map(item => f(item))
     claude_messages = [{"role": m.role, "content": m.content} for m in request.messages]
 
+    # Retrieve on the latest user turn — that's the question being asked right now.
+    question = next((m.content for m in reversed(request.messages) if m.role == "user"), None)
+    if not question:
+        raise HTTPException(status_code=422, detail="No user message to answer.")
+
+    # Find grounding chunks. If the knowledge base is unreachable, do NOT fall back to
+    # answering from thin air — say it's unavailable.
     try:
-        # Anthropic() reads your ANTHROPIC_API_KEY from the environment — the key stays out of the code.
-        client = Anthropic()
+        hits = retrieve(question)
+    except Exception:
+        logger.exception("retrieval failed")
+        raise HTTPException(status_code=503, detail="The knowledge base is unavailable right now.")
+
+    # Not covered by the corpus → refuse honestly, and skip the LLM call entirely (no cost).
+    if not is_grounded(hits):
+        return ChatResponse(
+            reply=REFUSAL,
+            usage=Usage(input_tokens=0, output_tokens=0, cost_usd=0.0),
+            citations=[],
+        )
+
+    # Ground the persona prompt on the retrieved sources, then answer.
+    grounded_system = build_system_prompt(ABOUT_SAMUEL, hits)
+    try:
+        client = Anthropic()   # reads ANTHROPIC_API_KEY from the environment
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",   # fast + inexpensive; great for a portfolio bot
             max_tokens=1024,
-            system=ABOUT_SAMUEL,
+            system=grounded_system,
             messages=claude_messages,
         )
-    except Exception as error:
-        # If the key is missing or the API call fails, return a clear error instead of crashing.
-        raise HTTPException(status_code=500, detail=f"Could not reach Claude: {error}")
+    except Exception:
+        logger.exception("claude call failed")   # never echo the SDK error to the caller
+        raise HTTPException(status_code=502, detail="Could not reach the language model.")
 
-    # response.content is a LIST of content blocks; for a normal text answer we want the first block's text.
     reply_text = response.content[0].text
     usage = Usage(
         input_tokens=response.usage.input_tokens,
         output_tokens=response.usage.output_tokens,
         cost_usd=_answer_cost_usd(response.usage.input_tokens, response.usage.output_tokens),
     )
-    return ChatResponse(reply=reply_text, usage=usage)
+    # Cite only the sources the reply actually referenced by their [n] markers.
+    return ChatResponse(reply=reply_text, usage=usage, citations=cited_sources(reply_text, hits))
 
 
 # Note: these handlers are plain `def` (not `async def`). FastAPI runs sync handlers in a

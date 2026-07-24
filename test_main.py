@@ -13,13 +13,18 @@ re-introduces an overclaim (listing in-progress work as a shipped skill). These 
 plain string assertions on ABOUT_SAMUEL — no API key, no network, no cost.
 """
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from main import app
-from about_me import ABOUT_SAMUEL
 
 # TestClient lets us call the app in-process, without starting a real server.
 client = TestClient(app)
+
+# The corpus is the bot's claims surface now (Module 1 / RAG), so the honesty guards
+# below assert against it rather than the old hand-written system prompt.
+SKILLS_MD = (Path(__file__).parent / "corpus" / "skills.md").read_text(encoding="utf-8")
 
 
 def test_health_returns_ok():
@@ -81,25 +86,25 @@ def test_answer_cost_uses_haiku_pricing():
 
 
 # ----------------------------------------------------------------------------
-# Honesty guards
-# ABOUT_SAMUEL is organized into "## " sections. _section() grabs one section's
-# text (from its header up to the next "## " header) so we can assert on that
-# slice in isolation — e.g. "RAG must not appear in the *shipped* skills section,
-# even though it legitimately appears in the *currently building* section."
+# Honesty guards — now against the corpus (corpus/skills.md), the bot's claims
+# surface. skills.md is organized into "## " sections; _section() grabs one
+# section's text (header up to the next "## ") so we can assert on that slice in
+# isolation — e.g. "RAG must not appear in the *shipped* section, even though it
+# legitimately appears in the *currently building* section."
 # ----------------------------------------------------------------------------
 
 def _section(header_prefix: str) -> str:
-    """Return the text of the '## ' section whose header starts with header_prefix."""
-    start = ABOUT_SAMUEL.index(header_prefix)
-    body = ABOUT_SAMUEL[start:]
+    """Return the text of the '## ' section in skills.md whose header starts with header_prefix."""
+    start = SKILLS_MD.index(header_prefix)
+    body = SKILLS_MD[start:]
     next_header = body.find("\n## ", len(header_prefix))
     return body if next_header == -1 else body[:next_header]
 
 
 def test_shipped_skills_do_not_claim_in_progress_work():
-    """The 'shipped' skills section must not list anything Samuel hasn't shipped."""
-    shipped = _section("## Skills").lower()
-    for overclaim in ["rag", "agents", "vector search", "evaluations", "docker"]:
+    """The 'shipped' section must not list anything Samuel hasn't shipped."""
+    shipped = _section("## Shipped").lower()
+    for overclaim in ["rag", "agents", "vector search", "evaluations", "docker", "openai"]:
         assert overclaim not in shipped, f"'{overclaim}' must not appear as a shipped skill"
 
 
@@ -111,6 +116,9 @@ def test_in_progress_work_is_present_and_labeled_not_shipped():
 
 
 def test_honesty_rule_is_present():
-    """The system prompt must instruct the bot never to present in-progress work as done."""
-    answer = _section("## How to answer").lower()
-    assert "never present in-progress work as completed" in answer
+    """The assembled system prompt must instruct the bot never to present in-progress work as done."""
+    from rag import build_system_prompt
+    hits = [{"source_path": "profile.md", "title": "Profile", "content": "text", "similarity": 0.9}]
+    prompt = build_system_prompt("persona", hits).lower()
+    assert "in-progress work as finished" in prompt
+    assert "only using the numbered sources" in prompt   # and it must be grounded
