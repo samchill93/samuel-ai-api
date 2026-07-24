@@ -22,7 +22,7 @@ from pydantic import BaseModel, EmailStr, Field      # typed, self-validating da
 
 from about_me import ABOUT_SAMUEL                    # the assistant's persona/voice shell
 from retrieve import retrieve, is_grounded           # RAG: find relevant corpus chunks
-from rag import build_system_prompt, cited_sources, REFUSAL  # ground the prompt + cite sources
+from rag import build_system_prompt, finalize_citations, REFUSAL  # ground the prompt + cite sources
 
 # Read ANTHROPIC_API_KEY (and anything else) from the .env file so it lands in the environment.
 load_dotenv()
@@ -242,14 +242,14 @@ def chat(request: ChatRequest) -> ChatResponse:
         logger.exception("claude call failed")   # never echo the SDK error to the caller
         raise HTTPException(status_code=502, detail="Could not reach the language model.")
 
-    reply_text = response.content[0].text
+    # Renumber the [n] markers to match the deduped source list, and get that list back.
+    reply_text, citations = finalize_citations(response.content[0].text, hits)
     usage = Usage(
         input_tokens=response.usage.input_tokens,
         output_tokens=response.usage.output_tokens,
         cost_usd=_answer_cost_usd(response.usage.input_tokens, response.usage.output_tokens),
     )
-    # Cite only the sources the reply actually referenced by their [n] markers.
-    return ChatResponse(reply=reply_text, usage=usage, citations=cited_sources(reply_text, hits))
+    return ChatResponse(reply=reply_text, usage=usage, citations=citations)
 
 
 # Note: these handlers are plain `def` (not `async def`). FastAPI runs sync handlers in a

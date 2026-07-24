@@ -3,7 +3,7 @@ Unit tests for grounded-answer assembly — the rules that make the RAG answers 
 tested without a key or database.
 """
 
-from rag import build_context, build_system_prompt, cited_sources, REFUSAL
+from rag import build_context, build_system_prompt, finalize_citations, REFUSAL
 
 HITS = [
     {"source_path": "profile.md", "title": "Profile", "content": "Samuel is a Full-Stack AI Engineer.", "similarity": 0.8},
@@ -30,31 +30,37 @@ def test_system_prompt_grounds_and_keeps_the_persona():
     assert "Cadence is a support chatbot." in prompt       # sources embedded
 
 
-# --- Citations (the honest part) --------------------------------------------
-def test_cited_sources_returns_only_what_the_reply_cites():
-    reply = "Samuel is a Full-Stack AI Engineer [1]."
-    cites = cited_sources(reply, HITS)
+# --- Citations + renumbering (the honest, touchable part) -------------------
+def test_finalize_returns_only_what_the_reply_cites():
+    reply, cites = finalize_citations("Samuel is a Full-Stack AI Engineer [1].", HITS)
+    assert reply == "Samuel is a Full-Stack AI Engineer [1]."
     assert cites == [{"source_path": "profile.md", "title": "Profile"}]
 
 
-def test_cited_sources_dedupes_by_path_in_citation_order():
-    # [2] then [1]; [3] is also profile.md so it must not appear twice.
-    reply = "Cadence is a chatbot [2]. Samuel builds them [1], as a former PM [3]."
-    cites = cited_sources(reply, HITS)
+def test_finalize_renumbers_and_dedupes_in_citation_order():
+    # [2] then [1]; [3] is also profile.md. After renumbering, cadence=1 and profile=2,
+    # and the two profile markers collapse to the same number so text matches the chips.
+    reply, cites = finalize_citations(
+        "Cadence is a chatbot [2]. Samuel builds them [1], as a former PM [3].", HITS
+    )
+    assert reply == "Cadence is a chatbot [1]. Samuel builds them [2], as a former PM [2]."
     assert cites == [
         {"source_path": "projects/cadence.md", "title": "Cadence"},
         {"source_path": "profile.md", "title": "Profile"},
     ]
 
 
-def test_cited_sources_ignores_out_of_range_markers():
+def test_finalize_drops_out_of_range_markers():
     """A marker with no matching chunk must not become a fabricated citation."""
-    reply = "According to the docs [99], something is true."
-    assert cited_sources(reply, HITS) == []
+    reply, cites = finalize_citations("According to the docs [99], something is true.", HITS)
+    assert cites == []
+    assert "[99]" not in reply
 
 
-def test_cited_sources_empty_when_no_markers():
-    assert cited_sources("A plain answer with no citations.", HITS) == []
+def test_finalize_leaves_plain_text_unchanged():
+    reply, cites = finalize_citations("A plain answer with no citations.", HITS)
+    assert reply == "A plain answer with no citations."
+    assert cites == []
 
 
 def test_refusal_message_is_honest():

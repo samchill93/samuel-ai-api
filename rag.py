@@ -3,12 +3,13 @@ Grounded-answer assembly for the RAG assistant.
 
 Three pure steps, all unit-tested without a network or database, so wiring them into
 /chat later is a few lines rather than a rewrite:
-  - build_context(hits)          — number the retrieved chunks and tag each with its source
-  - build_system_prompt(base, …) — a prompt that forbids answering beyond those sources
-  - cited_sources(reply, hits)   — the sources the model ACTUALLY cited, by its [n] markers
+  - build_context(hits)            — number the retrieved chunks and tag each with its source
+  - build_system_prompt(base, …)   — a prompt that forbids answering beyond those sources
+  - finalize_citations(reply, …)   — renumber the reply's [n] markers to a clean 1..N that
+                                     matches the deduped source list, and return that list
 
-The last one is what makes citations honest: the widget shows only the sources the answer
-used, not every chunk that happened to be retrieved.
+finalize_citations is what makes citations honest AND touchable: the visible markers line
+up one-to-one with the source chips, and the list holds only the sources the answer used.
 """
 
 import re
@@ -48,21 +49,32 @@ def build_system_prompt(base_prompt: str, hits: list[dict]) -> str:
     )
 
 
-def cited_sources(reply: str, hits: list[dict]) -> list[dict]:
-    """Return the sources the reply actually cites, deduped, in first-citation order.
+def finalize_citations(reply: str, hits: list[dict]) -> tuple[str, list[dict]]:
+    """Renumber the reply's [n] markers and return (rewritten_reply, citations).
 
-    Only [n] markers that map to a retrieved chunk count; an out-of-range marker is
-    ignored rather than inventing a citation.
+    A marker [n] refers to the n-th retrieved chunk, and several markers can point to the
+    same source. This collapses them to a clean 1..N so the visible numbers line up with
+    the deduped source chips — like a reference list — which is what lets each marker be a
+    touchable link to its chip. A marker with no matching chunk is a model slip and is
+    dropped rather than shown as a citation.
     """
-    out: list[dict] = []
-    seen: set[str] = set()
+    order: list[str] = []            # source_path in first-citation order
+    meta: dict[str, dict] = {}       # source_path -> {source_path, title}
     for match in _MARKER.finditer(reply):
         idx = int(match.group(1)) - 1
-        if idx < 0 or idx >= len(hits):
-            continue
-        hit = hits[idx]
-        if hit["source_path"] in seen:
-            continue
-        seen.add(hit["source_path"])
-        out.append({"source_path": hit["source_path"], "title": hit["title"]})
-    return out
+        if 0 <= idx < len(hits):
+            source_path = hits[idx]["source_path"]
+            if source_path not in meta:
+                meta[source_path] = {"source_path": source_path, "title": hits[idx]["title"]}
+                order.append(source_path)
+    renumber = {source_path: i + 1 for i, source_path in enumerate(order)}
+
+    def _sub(match) -> str:
+        idx = int(match.group(1)) - 1
+        if 0 <= idx < len(hits):
+            return f"[{renumber[hits[idx]['source_path']]}]"
+        return ""   # drop a marker that points at no retrieved chunk
+
+    new_reply = _MARKER.sub(_sub, reply)
+    citations = [meta[source_path] for source_path in order]
+    return new_reply, citations
