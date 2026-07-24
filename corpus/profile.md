@@ -2,7 +2,7 @@
 
 ## Summary
 Samuel Hill is a self-taught Full-Stack AI Engineer who builds production LLM applications and
-ships them end to end. He turns the Claude and OpenAI APIs into real, reliable products — with the
+ships them end to end. He turns the Claude API into real, reliable products — with the
 authentication, payments, testing, and deployment behind them. He is early in his engineering
 career but ships production-quality work.
 
