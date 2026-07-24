@@ -53,3 +53,26 @@ labelling a half-finished path as half-finished on a public page.
 **Open at this entry:** DATABASE_URL is not set in Render, so the inquiry write to Neon
 is not running; the site says so rather than implying otherwise. Both 3D layers remain
 flagged off in production pending a performance check on lower-end hardware.
+
+**2026-07-24 · Module 1 — RAG with visible, touchable citations (built + verified locally) ·**
+The assistant stopped answering from a hand-written prompt and now answers only from
+Samuel's real documents. A `/corpus` of markdown is chunked (fixed 1000-char windows, 150
+overlap), embedded with OpenAI `text-embedding-3-small` (1536-dim), and stored in Neon
+Postgres with a pgvector HNSW cosine index. `/chat` retrieves the top-5 chunks for the
+question, refuses deterministically at $0 when the best cosine similarity is below 0.35
+(the out-of-corpus "pizza" question scores 0.33 vs 0.46–0.53 for real questions), and
+otherwise grounds Claude on numbered sources. Replies carry `[n]` markers renumbered to
+match a deduped source list; the widget renders each marker as a hover/tap popover
+previewing the source title and a snippet — the Perplexity/Claude citation pattern.
+`about_me.py` shrank from a facts-laden prompt to a persona shell, so the corpus is the
+single claims surface. Measured: grounded answers ~$0.0017–0.0029 (Haiku 4.5), refusals
+$0; 26 tests pass. Capabilities demonstrated: retrieval-augmented generation, embeddings +
+vector search, grounding-vs-hallucination with a calibrated refusal, honest chunk-level
+citations, and testing database plumbing independently of a paid API — a separation that
+caught a real bug (a Python list binds as `float[]`, not `vector`, which would have broken
+ingestion on first run).
+
+**Open at this entry:** not yet deployed — production `/chat` needs `OPENAI_API_KEY` and
+`DATABASE_URL` on Render (the corpus is already ingested into that Neon database). Case
+study: `case-studies/module-1-rag.md`. Threshold calibration, published eval numbers, and
+the occasional Markdown-in-plain-text slip are Module 2 work.
