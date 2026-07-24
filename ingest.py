@@ -15,6 +15,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 import psycopg
+from pgvector import Vector                     # wraps a list so it adapts as VECTOR, not float[]
 from pgvector.psycopg import register_vector
 
 load_dotenv(Path(__file__).with_name(".env"))
@@ -105,7 +106,8 @@ def upsert_document(cur, source_path: str, title: str, content: str,
             INSERT INTO chunks (document_id, chunk_index, content, token_count, embedding)
             VALUES (%s, %s, %s, %s, %s)
             """,
-            (document_id, index, chunk, len(chunk.split()), embedding),  # token_count ~ word count
+            # Vector(...) so the embedding adapts as a vector; a bare list goes as float[].
+            (document_id, index, chunk, len(chunk.split()), Vector(embedding)),  # token_count ~ word count
         )
 
 
