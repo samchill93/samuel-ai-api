@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field      # typed, self-validating data models
 
 from about_me import ABOUT_SAMUEL                    # the assistant's persona/voice shell
-from retrieve import retrieve, is_grounded           # RAG: find relevant corpus chunks
+from retrieve import retrieve, is_grounded, conversation_query   # RAG: find relevant corpus chunks
 from rag import build_system_prompt, finalize_citations, to_plain_text, REFUSAL  # ground, cite, enforce plain text
 
 # Read ANTHROPIC_API_KEY (and anything else) from the .env file so it lands in the environment.
@@ -208,15 +208,16 @@ def chat(request: ChatRequest) -> ChatResponse:
 
     claude_messages = [{"role": m.role, "content": m.content} for m in request.messages]
 
-    # Retrieve on the latest user turn — that's the question being asked right now.
-    question = next((m.content for m in reversed(request.messages) if m.role == "user"), None)
-    if not question:
+    # Retrieve on the recent conversation, not just the last line, so a follow-up like
+    # "what's it built with?" keeps the topic from the turn before it.
+    query = conversation_query(claude_messages)
+    if not query:
         raise HTTPException(status_code=422, detail="No user message to answer.")
 
     # Find grounding chunks. If the knowledge base is unreachable, do NOT fall back to
     # answering from thin air — say it's unavailable.
     try:
-        hits = retrieve(question)
+        hits = retrieve(query)
     except Exception:
         logger.exception("retrieval failed")
         raise HTTPException(status_code=503, detail="The knowledge base is unavailable right now.")

@@ -8,7 +8,7 @@ answer is grounded and how documents are split.
 """
 
 from ingest import chunk_text, CHUNK_SIZE, CHUNK_OVERLAP
-from retrieve import is_grounded, MIN_SIMILARITY
+from retrieve import is_grounded, MIN_SIMILARITY, conversation_query
 
 
 # --- Grounding / refusal decision -------------------------------------------
@@ -31,6 +31,26 @@ def test_weak_top_hit_is_not_grounded():
 def test_threshold_is_inclusive():
     hits = [{"similarity": MIN_SIMILARITY}]
     assert is_grounded(hits) is True
+
+
+# --- Conversation-aware retrieval query -------------------------------------
+def test_query_carries_topic_into_a_follow_up():
+    """A follow-up's topic lives in the previous user turn, so both are in the query."""
+    msgs = [
+        {"role": "user", "content": "Tell me about Cadence"},
+        {"role": "assistant", "content": "Cadence is a support chatbot."},
+        {"role": "user", "content": "What is it built with?"},
+    ]
+    q = conversation_query(msgs)
+    assert "Cadence" in q and "built with" in q
+
+
+def test_query_is_just_the_message_on_a_single_turn():
+    assert conversation_query([{"role": "user", "content": "Who is Samuel?"}]) == "Who is Samuel?"
+
+
+def test_query_ignores_assistant_turns_and_empties():
+    assert conversation_query([{"role": "assistant", "content": "hello"}]) == ""
 
 
 # --- Chunking ----------------------------------------------------------------

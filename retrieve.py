@@ -65,6 +65,23 @@ def search(query_vector, k: int = RETRIEVAL_K) -> list[dict]:
     ]
 
 
+def conversation_query(messages: list[dict], max_user_turns: int = 2, max_chars: int = 500) -> str:
+    """Build the retrieval query from the recent conversation, not just the last line.
+
+    A follow-up like "what's it built with?" retrieves almost nothing on its own — the
+    topic lives in the previous turn ("tell me about Cadence"). Joining the last couple of
+    user turns restores that context. It's a lightweight alternative to an LLM query-rewrite
+    (which would add a call); the trade-off is mild topic bleed when the user hard-switches
+    subjects, which Module 2's evals can measure. Kept to user turns so the model's own
+    words don't dominate the query.
+    """
+    user_turns = [m["content"] for m in messages if m.get("role") == "user" and m.get("content")]
+    if not user_turns:
+        return ""
+    query = " ".join(user_turns[-max_user_turns:])
+    return query[-max_chars:] if len(query) > max_chars else query   # keep the current turn intact
+
+
 def embed_query(text: str) -> list[float]:
     """Embed a single question. For OpenAI, query and document embeddings are symmetric;
     a Voyage switch would pass input_type='query' here instead of 'document'."""
