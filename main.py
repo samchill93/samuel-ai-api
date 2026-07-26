@@ -22,7 +22,7 @@ from pydantic import BaseModel, EmailStr, Field      # typed, self-validating da
 
 from about_me import ABOUT_SAMUEL                    # the assistant's persona/voice shell
 from retrieve import retrieve, is_grounded           # RAG: find relevant corpus chunks
-from rag import build_system_prompt, finalize_citations, REFUSAL  # ground the prompt + cite sources
+from rag import build_system_prompt, finalize_citations, to_plain_text, REFUSAL  # ground, cite, enforce plain text
 
 # Read ANTHROPIC_API_KEY (and anything else) from the .env file so it lands in the environment.
 load_dotenv()
@@ -245,6 +245,7 @@ def chat(request: ChatRequest) -> ChatResponse:
 
     # Renumber the [n] markers to match the deduped source list, and get that list back.
     reply_text, citations = finalize_citations(response.content[0].text, hits)
+    reply_text = to_plain_text(reply_text)   # enforce the plain-text contract the widget relies on
     usage = Usage(
         input_tokens=response.usage.input_tokens,
         output_tokens=response.usage.output_tokens,

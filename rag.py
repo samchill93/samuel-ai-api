@@ -22,6 +22,18 @@ REFUSAL = (
 
 _MARKER = re.compile(r"\[(\d+)\]")
 
+# The persona promises plain text, but the model occasionally emits Markdown anyway.
+# These enforce the contract the widget relies on (it renders replies as plain text).
+_HEADING = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]+", re.MULTILINE)   # "## Heading" -> "Heading"
+_BOLD = re.compile(r"\*\*(.+?)\*\*", re.DOTALL)                   # "**word**"   -> "word"
+
+
+def to_plain_text(reply: str) -> str:
+    """Strip the Markdown the persona forbids (headings, bold), so no raw '##' or '**'
+    ever reaches the reader. A deterministic backstop for an instruction the model
+    doesn't always follow — instruction adherence itself is a Module 2 eval target."""
+    return _BOLD.sub(r"\1", _HEADING.sub("", reply))
+
 
 def build_context(hits: list[dict]) -> str:
     """Render retrieved chunks as a numbered, source-tagged block the model can cite."""

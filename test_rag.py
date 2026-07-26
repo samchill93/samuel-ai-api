@@ -3,7 +3,7 @@ Unit tests for grounded-answer assembly — the rules that make the RAG answers 
 tested without a key or database.
 """
 
-from rag import build_context, build_system_prompt, finalize_citations, REFUSAL
+from rag import build_context, build_system_prompt, finalize_citations, to_plain_text, REFUSAL
 
 HITS = [
     {"source_path": "profile.md", "title": "Profile", "content": "Samuel is a Full-Stack AI Engineer.", "similarity": 0.8},
@@ -75,3 +75,14 @@ def test_finalize_leaves_plain_text_unchanged():
 
 def test_refusal_message_is_honest():
     assert "don't have that" in REFUSAL and "confidently" in REFUSAL
+
+
+# --- Plain-text enforcement --------------------------------------------------
+def test_to_plain_text_strips_markdown_headings_and_bold():
+    assert to_plain_text("## What's shipped\nHe deployed X.") == "What's shipped\nHe deployed X."
+    assert to_plain_text("He is a **Full-Stack** engineer.") == "He is a Full-Stack engineer."
+
+
+def test_to_plain_text_leaves_prose_and_citations_untouched():
+    text = "Samuel led teams [1], then shipped products [2]."
+    assert to_plain_text(text) == text
