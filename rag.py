@@ -56,7 +56,11 @@ def build_system_prompt(base_prompt: str, hits: list[dict]) -> str:
         "- If the sources do not contain the answer, say you don't have it — do not guess or "
         "use any outside knowledge.\n"
         "- Cite each claim with the [n] marker of the source it came from.\n"
-        "- Never present in-progress work as finished, even if asked to.\n\n"
+        "- Shipped vs. in progress: some sources label work as 'Currently building' or 'in progress, "
+        "not yet shipped'. Take that literally — never say Samuel has shipped, built, completed, or "
+        "has experience with that work. If asked whether he can do it, say it is in progress / being "
+        "built, not that he has done it. Only describe something as done when a source calls it "
+        "shipped or live.\n\n"
         "## Sources\n" + build_context(hits)
     )
 

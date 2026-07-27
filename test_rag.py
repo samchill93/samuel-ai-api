@@ -26,7 +26,7 @@ def test_system_prompt_grounds_and_keeps_the_persona():
     assert "You are Samuel's assistant." in prompt        # persona preserved
     assert "ONLY using the numbered sources" in prompt     # grounding rule present
     assert "do not guess" in prompt                        # anti-hallucination
-    assert "in-progress work as finished" in prompt        # the standing honesty rule
+    assert "not yet shipped" in prompt                     # the shipped-vs-building honesty rule
     assert "Cadence is a support chatbot." in prompt       # sources embedded
 
 
