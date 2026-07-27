@@ -4,7 +4,7 @@
 - **AI / LLM:** Claude API, prompt & context engineering
 - **Frontend:** React, Next.js, React Native (Expo), Tailwind CSS, Vite
 - **Backend:** Node.js, Express, Python, FastAPI, Firebase (Auth + Firestore), Stripe
-- **Infra & tooling:** Google Cloud, Vercel, Render, GitHub Actions (CI/CD), Sentry, Cloudflare
+- **Infra & tooling:** Google Cloud, Vercel, Render, GitHub Actions (CI/CD)
 - **Languages:** JavaScript, TypeScript, Python
 
 ## Currently building — in progress, not yet shipped
