@@ -111,3 +111,23 @@ page rendering the calibrated numbers. Judge scores show run-to-run variance (bo
 generation and judging are non-deterministic), which is exactly why calibration and
 recurring-failure analysis matter more than a single run.
 
+**2026-07-27 · Module 2 — public Evals page shipped to the site ·** The site gained an
+"Evals · Module 2" section (`#evals`, in the nav and roadmap, behind the now-on `evalsDash`
+flag): objective scores as the headline (retrieval recall@5 0.992, citation validity 92/92),
+the eval-driven honesty fix as the story, judge scores shown but badged "Calibration pending"
+so no unvalidated number is presented as fact, and the 0.611-vs-0.981 finding anchored on a
+code fact rather than an uncalibrated score. Every figure renders from `evals/summary.json` —
+a committed artifact that `evals/summarize.py` derives from the run files — so the published
+numbers are provably from one real run, not typed. The section passed a three-lens adversarial
+review (honesty, design, hostile-skeptic) before going public; the review caught a real cost
+understatement (answer-generation cost was labelled "per full run" — corrected to the true
+end-to-end $0.41 = answers $0.21 + judge $0.20) plus three responsive/consistency fixes.
+Verified live at `living-portfolio-chi.vercel.app`. Capabilities demonstrated: publishing
+measured quality with honest provenance and labelling, deliberately holding a public number
+back until it is validated, and adversarially reviewing one's own public-facing work before
+shipping it.
+
+**Open at this entry:** judge calibration still awaits Samuel's hand labels
+(`data/calibration_slice.json`, 24 items); when scored, the page's "Calibration pending"
+badge becomes the agreement number. Teach-back for Modules 1–2 remains the open gate.
+
