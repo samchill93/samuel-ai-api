@@ -117,11 +117,13 @@ Measured live on the deployed API, minutes after a deploy (so the window is smal
 
 ## What's next
 
-- **Split `retrieval_ms` into `embed_ms` + `db_ms`** so the trace pinpoints whether the
-  embedding call or the database connection is the cost — the obvious next cut now that
-  retrieval is the known bottleneck.
+- **Split `retrieval_ms` into `embed_ms` + `db_ms` — done, and it's pointed.** The trace now
+  carries both. Measured live: warm, the Neon/pgvector step dominates (~1.3s) over embedding
+  (~0.2s); cold, both are slow (OpenAI ~4s, Neon ~2s). A 1.3s warm database step on a 12-chunk
+  table isn't the query — it's the per-request connection to Neon. The instrument found its own
+  next target.
 - **Reuse the database connection** (a pooled/persistent connection instead of connect-per-
-  `search`) to kill the cold-connection tax the trace exposed, then re-measure.
+  `search`) to kill the warm-connection tax the split just localized, then re-measure.
 - **The glass-box panel (public after Module 6):** render a request's own trace on the site —
   retrieval vs model time, sources, similarity, cost — so a visitor watches the answer account
   for itself. The backend already returns everything it needs.
