@@ -1,0 +1,42 @@
+{
+  "generated_on": "2026-07-27",
+  "source": "derived from evals/results.json and evals/judged.json",
+  "runtime_model": "claude-haiku-4-5",
+  "judge_model": "claude-sonnet-5",
+  "dataset": {
+    "total": 108,
+    "expected_answer": 66,
+    "expected_refuse": 42,
+    "categories": [
+      "background",
+      "edge",
+      "multiturn",
+      "projects",
+      "refuse",
+      "skills"
+    ]
+  },
+  "deterministic": {
+    "retrieval_recall_at_k": 0.992,
+    "recall_k": 5,
+    "perfect_recall_examples": "65/66",
+    "citation_validity": "92/92",
+    "false_refusals": 1,
+    "threshold_behavior_correctness": 0.611,
+    "run_cost_usd": 0.2092
+  },
+  "judge": {
+    "calibrated": false,
+    "overall_pass_rate": 0.917,
+    "grounded_rate": 0.944,
+    "behavior_correct_rate": 0.981,
+    "captures_expected_rate": 0.963,
+    "answer_pass": "59/66",
+    "refuse_pass": "40/42",
+    "cost_usd": 0.2028
+  },
+  "calibration": {
+    "status": "pending",
+    "slice_size": 24
+  }
+}
