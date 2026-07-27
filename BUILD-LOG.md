@@ -262,3 +262,20 @@ This closes the hardening item the public agent and streaming work had left open
 plainly: the limiter is per-instance and resets on deploy — the right shape for a single free-tier
 instance, and a clean seam to swap in Redis if the app ever scales horizontally.
 
+**2026-07-27 · Module 8 — Terraform authored (not yet applied) ·** Added `terraform/` codifying the
+stack — the Render web service, the Neon Postgres project, and the Vercel site — with the official
+render-oss/render and vercel/vercel providers plus the kislerdm/neon community provider. Every
+credential is a `sensitive`, defaultless variable supplied via `TF_VAR_*` (no committed tfvars; state
+is gitignored). **Honestly labelled:** Terraform isn't installed in this environment, so the config
+has not been validated, planned, or applied — and because the site's rule is that everything claimed
+is verified, Terraform is NOT marked shipped. Two caveats are written into the files: provider
+attribute names must be confirmed with `terraform validate` before use, and — because the Render,
+Neon, and Vercel resources already exist — adopting them needs `terraform import` (a fresh apply would
+duplicate live infra), the goal being a clean, empty `plan`. Capabilities demonstrated: expressing a
+real multi-provider stack as IaC with strict secret hygiene, and refusing to claim it shipped until a
+validate / import / plan round-trips against the real accounts.
+
+**Open at this entry:** `terraform init && validate && plan` (with credentials, after importing the
+existing resources) must round-trip clean before Terraform graduates to shipped — same shape as Docker
+(`docker build`). Judge calibration and teach-back remain the standing gates.
+
