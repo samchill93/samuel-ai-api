@@ -7,6 +7,7 @@ Coming from JavaScript/TypeScript? The comments point out the Python equivalents
 of things you already know.
 """
 
+import json                                          # SSE event serialization (streaming, Module 6)
 import logging                                       # server-side error detail, never sent to the client
 import os                                            # read environment variables (e.g. allowed CORS origins)
 import subprocess                                    # local git SHA as a dev fallback for /version
@@ -19,6 +20,7 @@ from anthropic import Anthropic                     # official Claude SDK for Py
 from dotenv import load_dotenv                       # loads the .env file into environment variables
 from fastapi import FastAPI, HTTPException, Request  # the web framework (like Express, but typed)
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse       # token-by-token SSE (Module 6)
 from pydantic import BaseModel, EmailStr, Field      # typed, self-validating data models
 
 from about_me import ABOUT_SAMUEL                    # the assistant's persona/voice shell
@@ -283,6 +285,28 @@ def inquiry(request: InquiryRequest) -> InquiryResponse:
     return InquiryResponse(status="received")
 
 
+def _retrieve_for_chat(request: ChatRequest, rid: str):
+    """Shared prep for /chat and /chat/stream: build the messages, form the retrieval query
+    from the recent conversation, and fetch grounding chunks. Raises the same 422/503 both
+    endpoints return, so their behaviour can't drift apart."""
+    claude_messages = [{"role": m.role, "content": m.content} for m in request.messages]
+    query = conversation_query(claude_messages)   # recent turns, so a follow-up keeps its topic
+    if not query:
+        raise HTTPException(status_code=422, detail="No user message to answer.")
+    t_retrieval = time.perf_counter()
+    try:
+        hits = retrieve(query)
+    except Exception:
+        logger.exception("retrieval failed", extra={"fields": {"request_id": rid}})
+        raise HTTPException(status_code=503, detail="The knowledge base is unavailable right now.")
+    return claude_messages, hits, (time.perf_counter() - t_retrieval) * 1000
+
+
+def _sse(event: dict) -> str:
+    """Format one Server-Sent Events message (data-only)."""
+    return f"data: {json.dumps(event)}\n\n"
+
+
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
     """Answer only from Samuel's corpus (RAG): retrieve the chunks relevant to the latest
@@ -293,23 +317,7 @@ def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
     logged and returned, so the answer can account for exactly how it was produced."""
 
     rid = getattr(http_request.state, "request_id", "")
-    claude_messages = [{"role": m.role, "content": m.content} for m in request.messages]
-
-    # Retrieve on the recent conversation, not just the last line, so a follow-up like
-    # "what's it built with?" keeps the topic from the turn before it.
-    query = conversation_query(claude_messages)
-    if not query:
-        raise HTTPException(status_code=422, detail="No user message to answer.")
-
-    # Find grounding chunks. If the knowledge base is unreachable, do NOT fall back to
-    # answering from thin air — say it's unavailable.
-    t_retrieval = time.perf_counter()
-    try:
-        hits = retrieve(query)
-    except Exception:
-        logger.exception("retrieval failed", extra={"fields": {"request_id": rid}})
-        raise HTTPException(status_code=503, detail="The knowledge base is unavailable right now.")
-    retrieval_ms = (time.perf_counter() - t_retrieval) * 1000
+    claude_messages, hits, retrieval_ms = _retrieve_for_chat(request, rid)
     top_similarity = hits[0]["similarity"] if hits else None
 
     # Not covered by the corpus → refuse honestly, and skip the LLM call entirely (no cost).
@@ -362,6 +370,67 @@ def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
         "input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens,
         "cost_usd": round(usage.cost_usd, 6)}})
     return ChatResponse(reply=reply_text, usage=usage, citations=citations, trace=trace)
+
+
+@app.post("/chat/stream")
+def chat_stream(request: ChatRequest, http_request: Request):
+    """Streaming version of /chat (Module 6): the answer's tokens arrive as Server-Sent Events
+    as the model writes them, then a final 'done' event carries the finalized reply, citations,
+    usage, and trace. Retrieval and grounding are identical to /chat — only delivery differs, so
+    the refusal, cost, and citation behaviour all match its non-streaming twin."""
+    rid = getattr(http_request.state, "request_id", "")
+    claude_messages, hits, retrieval_ms = _retrieve_for_chat(request, rid)
+    top_similarity = hits[0]["similarity"] if hits else None
+
+    def event_stream():
+        # Out of corpus → one refusal event, no model call and no cost (same rule as /chat).
+        if not is_grounded(hits):
+            metrics.record_chat(answered=False, input_tokens=0, output_tokens=0, cost_usd=0.0)
+            trace = Trace(request_id=rid, grounded=False, sources=len(hits), top_similarity=top_similarity,
+                          retrieval_ms=round(retrieval_ms, 1), model_ms=0.0, total_ms=round(retrieval_ms, 1))
+            logger.info("chat_stream", extra={"fields": {"request_id": rid, "grounded": False,
+                        "sources": len(hits), "retrieval_ms": round(retrieval_ms, 1), "cost_usd": 0.0}})
+            yield _sse({"type": "done", "reply": REFUSAL, "citations": [],
+                        "usage": {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0},
+                        "trace": trace.model_dump()})
+            return
+
+        grounded_system = build_system_prompt(ABOUT_SAMUEL, hits)
+        t_model = time.perf_counter()
+        try:
+            client = Anthropic()
+            with client.messages.stream(model="claude-haiku-4-5-20251001", max_tokens=1024,
+                                        system=grounded_system, messages=claude_messages) as stream:
+                for delta in stream.text_stream:
+                    yield _sse({"type": "token", "text": delta})   # raw text as it arrives
+                final = stream.get_final_message()
+        except Exception:
+            logger.exception("claude stream failed", extra={"fields": {"request_id": rid}})
+            yield _sse({"type": "error", "detail": "Could not reach the language model."})
+            return
+        model_ms = (time.perf_counter() - t_model) * 1000
+
+        # Finalize once the full text is in: renumber [n] markers, strip markdown, price it.
+        reply_text, citations = finalize_citations(final.content[0].text, hits)
+        reply_text = to_plain_text(reply_text)
+        cost = _answer_cost_usd(final.usage.input_tokens, final.usage.output_tokens)
+        metrics.record_chat(answered=True, input_tokens=final.usage.input_tokens,
+                            output_tokens=final.usage.output_tokens, cost_usd=cost)
+        trace = Trace(request_id=rid, grounded=True, sources=len(hits), top_similarity=top_similarity,
+                      retrieval_ms=round(retrieval_ms, 1), model_ms=round(model_ms, 1),
+                      total_ms=round(retrieval_ms + model_ms, 1))
+        logger.info("chat_stream", extra={"fields": {"request_id": rid, "grounded": True,
+                    "sources": len(hits), "retrieval_ms": round(retrieval_ms, 1), "model_ms": round(model_ms, 1),
+                    "input_tokens": final.usage.input_tokens, "output_tokens": final.usage.output_tokens,
+                    "cost_usd": round(cost, 6)}})
+        yield _sse({"type": "done", "reply": reply_text, "citations": citations,
+                    "usage": {"input_tokens": final.usage.input_tokens,
+                              "output_tokens": final.usage.output_tokens, "cost_usd": cost},
+                    "trace": trace.model_dump()})
+
+    # no-cache / no-buffering headers so proxies (and Render) don't hold the stream back.
+    return StreamingResponse(event_stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.post("/agent", response_model=AgentResponse)

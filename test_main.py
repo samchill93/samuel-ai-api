@@ -77,6 +77,16 @@ def test_inquiry_without_database_url_fails_honestly(monkeypatch):
     assert "postgres" not in r.text.lower()    # no driver or host detail
 
 
+def test_sse_formats_one_recoverable_data_event():
+    """The streaming endpoint (Module 6) frames each event as `data: <json>\\n\\n`; a client
+    splitting on the blank line must recover exactly one JSON object."""
+    import json
+    from main import _sse
+    out = _sse({"type": "token", "text": "hi"})
+    assert out.startswith("data: ") and out.endswith("\n\n")
+    assert json.loads(out[len("data: "):].strip()) == {"type": "token", "text": "hi"}
+
+
 def test_answer_cost_uses_haiku_pricing():
     """Cost comes from real token counts and the Haiku price constants — no fabricated numbers."""
     from main import _answer_cost_usd, HAIKU_INPUT_USD_PER_MTOK, HAIKU_OUTPUT_USD_PER_MTOK
