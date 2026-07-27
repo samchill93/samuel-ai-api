@@ -35,6 +35,11 @@
     "refuse_pass": "40/42",
     "cost_usd": 0.2028
   },
+  "costs": {
+    "answer_generation_usd": 0.2092,
+    "judge_usd": 0.2028,
+    "full_eval_run_usd": 0.412
+  },
   "calibration": {
     "status": "pending",
     "slice_size": 24

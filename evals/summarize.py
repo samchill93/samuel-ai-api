@@ -63,6 +63,12 @@ def main() -> None:
             "refuse_pass": jud["refuse_pass"],
             "cost_usd": jud["judge_cost_usd"],
         },
+        "costs": {
+            "answer_generation_usd": det["total_run_cost_usd"],
+            "judge_usd": jud["judge_cost_usd"],
+            # A full eval run is both phases: generate every answer, then judge every reply.
+            "full_eval_run_usd": round(det["total_run_cost_usd"] + jud["judge_cost_usd"], 4),
+        },
         "calibration": {"status": "pending", "slice_size": 24},
     }
 
