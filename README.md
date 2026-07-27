@@ -8,11 +8,10 @@ and refusing honestly when the documents don't cover the question. Built with Fa
 This is the Living Portfolio backend — a portfolio that demonstrates my skills by being
 built with them.
 
-> **Status.** The API is live on Render (always-on, continuous deployment from `main`),
+> **Status.** Live in production on Render (always-on, continuous deployment from `main`),
 > with interactive docs at [`/docs`](https://samuel-ai-api.onrender.com/docs). The RAG
-> pipeline described below is **built and verified locally**; enabling it in production
-> is pending two environment variables (`OPENAI_API_KEY`, `DATABASE_URL`) on Render, so
-> the deployed `/chat` currently runs the earlier non-retrieval version until then.
+> pipeline described below is deployed and verified: `/chat` returns grounded, cited
+> answers, and `/inquiry` validates then stores to Neon.
 
 ---
 

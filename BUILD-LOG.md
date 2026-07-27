@@ -72,7 +72,13 @@ citations, and testing database plumbing independently of a paid API — a separ
 caught a real bug (a Python list binds as `float[]`, not `vector`, which would have broken
 ingestion on first run).
 
-**Open at this entry:** not yet deployed — production `/chat` needs `OPENAI_API_KEY` and
-`DATABASE_URL` on Render (the corpus is already ingested into that Neon database). Case
-study: `case-studies/module-1-rag.md`. Threshold calibration, published eval numbers, and
-the occasional Markdown-in-plain-text slip are Module 2 work.
+**2026-07-27 · Module 1 deployed to production ·** `OPENAI_API_KEY` and `DATABASE_URL`
+added to Render; the 10 RAG commits pushed and deployed (SHA a43ef7c). Verified live at
+`samuel-ai-api.onrender.com`: `/chat` returns grounded, multi-source cited answers
+(~$0.0029), an out-of-corpus question refuses at $0, and `/inquiry` validates then stores
+to Neon (201). The frontend's touchable citation UI shipped to Vercel, and the site copy
+was corrected to match (RAG marked shipped; the topology's inquiry flow no longer says
+"not deployed"). Case study: `case-studies/module-1-rag.md`.
+
+**Open at this entry:** threshold calibration, published eval numbers, and the
+Markdown-in-plain-text slip are Module 2 work. Teach-back for Module 1 still to pass.

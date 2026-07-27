@@ -1,7 +1,7 @@
 # Case Study — RAG with Visible, Touchable Citations
 
-*Living Portfolio, Module 1. Status: built and verified locally; production deploy
-pending two Render environment variables (see "What's next").*
+*Living Portfolio, Module 1. Status: live in production — grounded, cited answers at
+samuel-ai-api.onrender.com/chat, verified end to end.*
 
 ## Problem
 
@@ -117,10 +117,12 @@ bot cannot answer from a second, uncited source.
 
 ## What's next
 
-- **Deploy:** add `OPENAI_API_KEY` and `DATABASE_URL` to Render, then verify production `/chat`
-  returns cited answers. Until then the feature is local-only, and the site says so.
+- **Deployed ✓** — `OPENAI_API_KEY` and `DATABASE_URL` are set on Render; production `/chat`
+  returns grounded, cited answers, and `/inquiry` stores to Neon (verified live).
 - **Evals (Module 2):** calibrate the 0.35 threshold against labeled should-answer / should-refuse
   cases; measure groundedness, citation correctness, and retrieval recall@k with published numbers.
 - **Instruction adherence:** the model occasionally emits Markdown despite a plain-text
-  instruction — a concrete thing for the eval harness to catch and the prompt to fix.
+  instruction — a deterministic `to_plain_text` backstop strips it now, and it stays an eval target.
+- **Multi-turn retrieval:** the query now includes recent user turns so follow-ups keep their
+  topic; the topic-bleed trade-off on a hard subject switch is a thing to measure in evals.
 - **Chunking:** move to heading-aware splitting if the corpus grows past a handful of documents.
