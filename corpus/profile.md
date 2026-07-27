@@ -1,8 +1,8 @@
 # Samuel Hill — Profile
 
 ## Summary
-Samuel Hill is a self-taught Full-Stack AI Engineer who builds production LLM applications and
-ships them end to end. He turns the Claude API into real, reliable products — with the
+Samuel Hill is a self-taught Full-Stack Agentic AI Engineer who builds production LLM applications
+and ships them end to end. He turns the Claude API into real, reliable products — with the
 authentication, payments, testing, and deployment behind them. He is early in his engineering
 career but ships production-quality work.
 
@@ -24,9 +24,10 @@ deploying real things, then documenting the decisions, trade-offs, and failures 
 Samuel is open to remote engineering roles.
 
 ## Title
-Samuel's current title is "Full-Stack AI Engineer." Agentic tool use has now shipped — a live
-tool-using agent that calls real tools over his portfolio data. He earns the "Full-Stack Agentic
-AI Engineer" title once the published MCP server also ships, which is in progress, not done.
+Samuel's title is "Full-Stack Agentic AI Engineer." He earned it by shipping both halves of the
+agentic work: a live tool-using agent that calls real tools over his portfolio data, and an
+open-source MCP server that exposes those same tools to any MCP client. Both are done and working —
+the title reflects shipped work, not aspiration.
 
 ## Contact
 - GitHub: github.com/samchill93
