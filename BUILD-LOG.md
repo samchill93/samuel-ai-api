@@ -131,3 +131,25 @@ shipping it.
 (`data/calibration_slice.json`, 24 items); when scored, the page's "Calibration pending"
 badge becomes the agreement number. Teach-back for Modules 1–2 remains the open gate.
 
+**2026-07-27 · Module 3 — Observability: request tracing, structured logs, and /metrics ·**
+The assistant can now account for itself. An HTTP middleware gives every request a
+correlatable id (`X-Request-ID` on the response), times it, and logs it as one structured
+JSON line to stdout (Render captures it); `/chat` times retrieval and the model separately and
+returns a `Trace` (id, grounded, sources, top similarity, retrieval_ms, model_ms, total_ms);
+and `GET /metrics` reports request counts, status families, latency p50/p95, and the running
+chat token/cost tally — process-local and labelled with a `since` window so the numbers never
+pretend to be lifetime totals. No request bodies, PII, or secrets are recorded (`obs.py` holds
+the JSON formatter and a thread-safe, bounded metrics registry). The instrumentation
+immediately found something: on a grounded answer, retrieval (~6.2s cold) dominated the model
+(~1.8s) — the slow first response is a fresh Neon serverless connection plus the embedding
+call, not the LLM. 11 new tests (42 total). Verified live: X-Request-ID present, a grounded
+/chat trace and a $0 refusal trace both correct, and /metrics returning real counts.
+Capabilities demonstrated: self-hosted observability without an external APM, request
+correlation, honest operational reporting scoped to a known window, and using a trace to
+locate a real bottleneck instead of guessing. Case study: `case-studies/module-3-observability.md`.
+
+**Open at this entry:** the retrieval bottleneck the trace exposed is not yet fixed — the next
+cuts are splitting retrieval into embed-vs-db timing and pooling the database connection. The
+public glass-box panel stays flagged off (public after Module 6); the site's roadmap
+Observability row now points to the live `/metrics` as proof of the shipped capability.
+

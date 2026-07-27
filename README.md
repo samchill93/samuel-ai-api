@@ -29,6 +29,10 @@ built with them.
   in-progress work are kept explicitly separate, and tests fail if an overclaim is introduced.
 - **Typed, validated API** — every request and response is checked against a Pydantic schema.
 - **Cost-metered** — each answer reports real input/output token counts and the computed cost.
+- **Observable** — every request gets an id (`X-Request-ID`), is timed and logged as one
+  structured JSON line, and `/chat` returns a per-request trace (retrieval vs model time,
+  sources, similarity); `GET /metrics` reports request counts, latency p50/p95, and the
+  running token/cost tally, honestly scoped to the current process.
 
 ## Architecture
 
@@ -53,7 +57,9 @@ Portfolio site (frontend)
 
 ## Key files
 
-- **`main.py`** — the FastAPI app: `/health`, `/version`, `/inquiry`, and the RAG `/chat`.
+- **`main.py`** — the FastAPI app: `/health`, `/version`, `/metrics`, `/inquiry`, and the RAG `/chat`.
+- **`obs.py`** — observability (Module 3): a JSON log formatter, a request-id generator, and a
+  thread-safe, bounded in-memory metrics registry read by `/metrics`.
 - **`retrieve.py`** — `search(vector, k)` (pure database cosine search, testable on its own) and
   `retrieve(query, k)` (embeds the question, then searches).
 - **`rag.py`** — assembles the grounded system prompt and, after the model answers, renumbers
@@ -63,8 +69,9 @@ Portfolio site (frontend)
 - **`schema.sql` / `apply_schema.py`** — `documents`, `chunks` (with the HNSW vector index),
   and `inquiries`; idempotent to apply.
 - **`corpus/`** — the markdown documents the bot answers from (its claims surface).
-- **`test_main.py` / `test_retrieve.py` / `test_rag.py`** — pytest suite (26 tests): chunking,
-  the grounding/refusal decision, citation renumbering/dedup/snippets, and honesty guards.
+- **`test_main.py` / `test_retrieve.py` / `test_rag.py` / `test_obs.py`** — pytest suite (42 tests):
+  chunking, the grounding/refusal decision, citation renumbering/dedup/snippets, honesty guards,
+  and the observability registry, JSON logs, and request middleware.
 
 ## Built with
 
@@ -108,7 +115,10 @@ Editing the corpus is the normal way to change what the bot knows: change a file
 
 ## Roadmap (the Living Portfolio)
 
-- **Evals** — a golden dataset and an LLM-as-judge calibrated to hand labels; calibrate the
-  refusal threshold and publish groundedness, citation-correctness, and recall@k numbers.
-- **Observability** — per-request token cost, latency, and retrieval tracing.
+- **Evals** ✓ shipped — a 108-case golden dataset and an LLM-as-judge (recall@5 0.992,
+  citations 92/92); the eval loop caught a real honesty bug in the live bot, fixed and
+  deployed. Judge-vs-human calibration is the one pending step.
+- **Observability** ✓ shipped — per-request ids, structured JSON logs, `/chat` tracing, and a
+  `/metrics` endpoint (latency p50/p95, request counts, running token/cost). Next: split
+  retrieval into embed-vs-db time, and pool the database connection.
 - **Agentic mode** — tool use, and an MCP server exposing the portfolio tools.
