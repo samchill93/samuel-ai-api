@@ -249,3 +249,16 @@ Docker before this graduates to shipped (badge flips, corpus moves Docker to shi
 added). The Render service keeps its native Python deploy unless deliberately switched to the
 Dockerfile. Terraform, rate-limiting, judge calibration, and teach-back remain open.
 
+**2026-07-27 · Hardening — rate-limiting the public paid endpoints ·** The chat, streaming, and
+agent endpoints each cost money per call and are open to the internet, so a scripted caller could
+run up a bill. Added an in-memory sliding-window limiter (`ratelimit.py`: thread-safe, bounded,
+process-local) as a dependency on `/chat`, `/chat/stream`, and `/agent`: over the cap (default
+20 requests / 60s per client IP, tunable via `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW`) it returns
+429 with a `Retry-After` hint, and a blocked request is not recorded, so a persistent caller
+recovers as its window slides rather than locking itself out. Verified live: 20 rapid requests
+from one IP returned 200, the next 5 returned 429 with `retry-after: 18` and a body that leaks
+nothing. Normal use (a few messages a minute) stays well under the cap. 5 new tests (61 total).
+This closes the hardening item the public agent and streaming work had left open. Scope, stated
+plainly: the limiter is per-instance and resets on deploy — the right shape for a single free-tier
+instance, and a clean seam to swap in Redis if the app ever scales horizontally.
+

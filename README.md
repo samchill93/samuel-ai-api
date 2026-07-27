@@ -38,6 +38,8 @@ built with them.
   and returns the answer plus every step it took, so the run is transparent.
 - **Streaming** — `POST /chat/stream` sends the answer token-by-token over Server-Sent Events, so
   the chat widget types it out live and then finalizes citations and cost from a closing event.
+- **Rate-limited** — the paid `/chat`, `/chat/stream`, and `/agent` endpoints cap requests per
+  client IP (429 with `Retry-After` over the limit), so a script can't run up the bill.
 
 ## Architecture
 
