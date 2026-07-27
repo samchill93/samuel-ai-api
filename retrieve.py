@@ -12,6 +12,7 @@ be verified against the real database before an embedding provider is ever wired
 """
 
 import os
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -91,6 +92,18 @@ def embed_query(text: str) -> list[float]:
 def retrieve(query: str, k: int = RETRIEVAL_K) -> list[dict]:
     """Embed the question and return its k nearest corpus chunks (needs the embedding key)."""
     return search(embed_query(query), k)
+
+
+def retrieve_timed(query: str, k: int = RETRIEVAL_K) -> tuple[list[dict], float, float]:
+    """Like retrieve(), but split the timing into (hits, embed_ms, db_ms) so a trace can show
+    whether embedding the query or the vector search dominates retrieval latency — the two
+    halves have very different causes (an OpenAI round-trip vs. a Neon/pgvector query)."""
+    t0 = time.perf_counter()
+    vector = embed_query(query)
+    t1 = time.perf_counter()
+    hits = search(vector, k)
+    t2 = time.perf_counter()
+    return hits, (t1 - t0) * 1000, (t2 - t1) * 1000
 
 
 def is_grounded(results: list[dict], threshold: float = MIN_SIMILARITY) -> bool:

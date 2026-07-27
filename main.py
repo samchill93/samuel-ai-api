@@ -24,7 +24,7 @@ from fastapi.responses import StreamingResponse       # token-by-token SSE (Modu
 from pydantic import BaseModel, EmailStr, Field      # typed, self-validating data models
 
 from about_me import ABOUT_SAMUEL                    # the assistant's persona/voice shell
-from retrieve import retrieve, is_grounded, conversation_query   # RAG: find relevant corpus chunks
+from retrieve import retrieve, retrieve_timed, is_grounded, conversation_query   # RAG: find relevant corpus chunks
 from rag import build_system_prompt, finalize_citations, to_plain_text, REFUSAL  # ground, cite, enforce plain text
 from obs import metrics, new_request_id, configure_logging       # observability (Module 3)
 from agent import run_agent                                       # tool-using agent (Module 5)
@@ -184,6 +184,8 @@ class Trace(BaseModel):
     sources: int                         # how many chunks retrieval returned
     top_similarity: float | None = None  # best cosine similarity for the query
     retrieval_ms: float
+    embed_ms: float | None = None        # part of retrieval_ms: the OpenAI embedding round-trip
+    db_ms: float | None = None           # part of retrieval_ms: the Neon/pgvector search
     model_ms: float                      # 0.0 on a refusal — no model call is made
     total_ms: float
 
@@ -313,13 +315,12 @@ def _retrieve_for_chat(request: ChatRequest, rid: str):
     query = conversation_query(claude_messages)   # recent turns, so a follow-up keeps its topic
     if not query:
         raise HTTPException(status_code=422, detail="No user message to answer.")
-    t_retrieval = time.perf_counter()
     try:
-        hits = retrieve(query)
+        hits, embed_ms, db_ms = retrieve_timed(query)
     except Exception:
         logger.exception("retrieval failed", extra={"fields": {"request_id": rid}})
         raise HTTPException(status_code=503, detail="The knowledge base is unavailable right now.")
-    return claude_messages, hits, (time.perf_counter() - t_retrieval) * 1000
+    return claude_messages, hits, embed_ms, db_ms
 
 
 def _sse(event: dict) -> str:
@@ -337,14 +338,15 @@ def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
     logged and returned, so the answer can account for exactly how it was produced."""
 
     rid = getattr(http_request.state, "request_id", "")
-    claude_messages, hits, retrieval_ms = _retrieve_for_chat(request, rid)
+    claude_messages, hits, embed_ms, db_ms = _retrieve_for_chat(request, rid)
+    retrieval_ms = embed_ms + db_ms
     top_similarity = hits[0]["similarity"] if hits else None
 
     # Not covered by the corpus → refuse honestly, and skip the LLM call entirely (no cost).
     if not is_grounded(hits):
         metrics.record_chat(answered=False, input_tokens=0, output_tokens=0, cost_usd=0.0)
         trace = Trace(request_id=rid, grounded=False, sources=len(hits), top_similarity=top_similarity,
-                      retrieval_ms=round(retrieval_ms, 1), model_ms=0.0, total_ms=round(retrieval_ms, 1))
+                      retrieval_ms=round(retrieval_ms, 1), embed_ms=round(embed_ms, 1), db_ms=round(db_ms, 1), model_ms=0.0, total_ms=round(retrieval_ms, 1))
         logger.info("chat", extra={"fields": {
             "request_id": rid, "grounded": False, "sources": len(hits),
             "top_similarity": top_similarity, "retrieval_ms": round(retrieval_ms, 1), "cost_usd": 0.0}})
@@ -382,8 +384,8 @@ def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
     metrics.record_chat(answered=True, input_tokens=usage.input_tokens,
                         output_tokens=usage.output_tokens, cost_usd=usage.cost_usd)
     trace = Trace(request_id=rid, grounded=True, sources=len(hits), top_similarity=top_similarity,
-                  retrieval_ms=round(retrieval_ms, 1), model_ms=round(model_ms, 1),
-                  total_ms=round(retrieval_ms + model_ms, 1))
+                  retrieval_ms=round(retrieval_ms, 1), embed_ms=round(embed_ms, 1), db_ms=round(db_ms, 1),
+                  model_ms=round(model_ms, 1), total_ms=round(retrieval_ms + model_ms, 1))
     logger.info("chat", extra={"fields": {
         "request_id": rid, "grounded": True, "sources": len(hits), "top_similarity": top_similarity,
         "retrieval_ms": round(retrieval_ms, 1), "model_ms": round(model_ms, 1),
@@ -399,7 +401,8 @@ def chat_stream(request: ChatRequest, http_request: Request):
     usage, and trace. Retrieval and grounding are identical to /chat — only delivery differs, so
     the refusal, cost, and citation behaviour all match its non-streaming twin."""
     rid = getattr(http_request.state, "request_id", "")
-    claude_messages, hits, retrieval_ms = _retrieve_for_chat(request, rid)
+    claude_messages, hits, embed_ms, db_ms = _retrieve_for_chat(request, rid)
+    retrieval_ms = embed_ms + db_ms
     top_similarity = hits[0]["similarity"] if hits else None
 
     def event_stream():
@@ -407,7 +410,7 @@ def chat_stream(request: ChatRequest, http_request: Request):
         if not is_grounded(hits):
             metrics.record_chat(answered=False, input_tokens=0, output_tokens=0, cost_usd=0.0)
             trace = Trace(request_id=rid, grounded=False, sources=len(hits), top_similarity=top_similarity,
-                          retrieval_ms=round(retrieval_ms, 1), model_ms=0.0, total_ms=round(retrieval_ms, 1))
+                          retrieval_ms=round(retrieval_ms, 1), embed_ms=round(embed_ms, 1), db_ms=round(db_ms, 1), model_ms=0.0, total_ms=round(retrieval_ms, 1))
             logger.info("chat_stream", extra={"fields": {"request_id": rid, "grounded": False,
                         "sources": len(hits), "retrieval_ms": round(retrieval_ms, 1), "cost_usd": 0.0}})
             yield _sse({"type": "done", "reply": REFUSAL, "citations": [],
@@ -437,8 +440,8 @@ def chat_stream(request: ChatRequest, http_request: Request):
         metrics.record_chat(answered=True, input_tokens=final.usage.input_tokens,
                             output_tokens=final.usage.output_tokens, cost_usd=cost)
         trace = Trace(request_id=rid, grounded=True, sources=len(hits), top_similarity=top_similarity,
-                      retrieval_ms=round(retrieval_ms, 1), model_ms=round(model_ms, 1),
-                      total_ms=round(retrieval_ms + model_ms, 1))
+                      retrieval_ms=round(retrieval_ms, 1), embed_ms=round(embed_ms, 1), db_ms=round(db_ms, 1),
+                      model_ms=round(model_ms, 1), total_ms=round(retrieval_ms + model_ms, 1))
         logger.info("chat_stream", extra={"fields": {"request_id": rid, "grounded": True,
                     "sources": len(hits), "retrieval_ms": round(retrieval_ms, 1), "model_ms": round(model_ms, 1),
                     "input_tokens": final.usage.input_tokens, "output_tokens": final.usage.output_tokens,
