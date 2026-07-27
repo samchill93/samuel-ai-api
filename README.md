@@ -145,6 +145,27 @@ It runs over stdio and reuses the same tool implementations as the `/agent` endp
 `DATABASE_URL` and `OPENAI_API_KEY` in the environment; the list tools work from the corpus files
 alone.)
 
+## Run it with Docker
+
+The API ships with a `Dockerfile` (single slim stage, non-root user, dependency-layer caching,
+a `/health` HEALTHCHECK) and a `docker-compose.yml` for local runs. Secrets are injected at
+runtime and never baked into the image — `.dockerignore` keeps `.env` out.
+
+```bash
+# with compose (reads .env):
+docker compose up --build          # -> http://localhost:8000
+
+# or plain docker:
+docker build -t samuel-ai-api .
+docker run --rm -p 8000:8000 --env-file .env samuel-ai-api
+```
+
+The live Render service currently deploys with its native Python build; the Dockerfile is the
+portable, reproducible alternative (and the path to a container-based deploy). Each build step is
+individually verified — dependency install and `uvicorn main:app` both run outside the container —
+but the full image build has not yet been run in the authoring environment, so Docker is not yet
+marked shipped.
+
 ## Roadmap (the Living Portfolio)
 
 - **Evals** ✓ shipped — a 108-case golden dataset and an LLM-as-judge (recall@5 0.992,

@@ -230,3 +230,22 @@ is the next natural step). Rate-limiting the public streaming/agent/chat endpoin
 hardening. Docker and Terraform remain on the roadmap; judge calibration and teach-back remain the
 standing gates.
 
+**2026-07-27 · Module 7 — Docker image authored (not yet built here) ·** Added a production-shaped
+`Dockerfile` (single slim `python:3.12-slim` stage, dependencies installed in their own cached layer,
+a non-root `appuser`, `$PORT`-aware `uvicorn` CMD, and a stdlib `/health` HEALTHCHECK), a
+`.dockerignore` that keeps `.env` and the venv out of the image while keeping the runtime-required
+`corpus/*.md`, and a `docker-compose.yml` that runs it locally reading secrets from `.env` via
+`env_file` (never baked in). **Honestly labelled:** Docker is not installed in this authoring
+environment, so the image build itself has not been run — and because the site's rule is that
+everything claimed is verified, Docker is NOT marked shipped on the roadmap or in the corpus. What is
+verified: each build step independently (dependency install in the venv; `uvicorn main:app` runs), and
+the HEALTHCHECK command's logic (exit 0 against a live `/health`, non-zero against a bad path). The
+README documents `docker build` / `docker compose up`. Capabilities demonstrated: writing a secure,
+reproducible container image (non-root, no secrets, layer caching, health probe) — and declining to
+claim it shipped until a real build proves it.
+
+**Open at this entry:** `docker build -t samuel-ai-api .` needs to run and pass in an environment with
+Docker before this graduates to shipped (badge flips, corpus moves Docker to shipped, case study
+added). The Render service keeps its native Python deploy unless deliberately switched to the
+Dockerfile. Terraform, rate-limiting, judge calibration, and teach-back remain open.
+

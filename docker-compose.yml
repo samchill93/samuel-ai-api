@@ -1,0 +1,16 @@
+# Local run:  docker compose up --build
+#
+# Builds the image and runs the API on http://localhost:8000. Secrets are read from .env at
+# runtime via env_file — they are never baked into the image (see .dockerignore). This is the
+# same .env used for `uvicorn main:app` locally: ANTHROPIC_API_KEY, OPENAI_API_KEY, DATABASE_URL.
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PORT=8000
+    restart: unless-stopped
