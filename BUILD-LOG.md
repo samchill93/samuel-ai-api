@@ -279,3 +279,14 @@ validate / import / plan round-trips against the real accounts.
 existing resources) must round-trip clean before Terraform graduates to shipped — same shape as Docker
 (`docker build`). Judge calibration and teach-back remain the standing gates.
 
+**2026-07-27 · Enhancement — hosted MCP over streamable HTTP (opt-in) ·** The portfolio MCP server can
+now also run over HTTP on the API itself: with `ENABLE_MCP_HTTP=1`, FastMCP's streamable-HTTP app is
+mounted at `/mcp`, exposing the same four tools to any HTTP MCP client — no separate service. It is
+gated behind the env flag and OFF by default, so production is byte-for-byte unchanged unless
+deliberately enabled; the mount cannot destabilize the live API. Verified locally with the flag on:
+the native API (`/health`) keeps working AND a real streamable-HTTP MCP client initializes, lists the
+four tools, and calls one at `/mcp` (server `samuel-portfolio`, protocol 2025-11-25). Deployed dormant
+(the flag is unset on Render). Honest caveat: `/mcp` is a mounted sub-app and is not covered by the
+LLM-endpoint rate limiter, so it should be throttled before being exposed widely — part of why it
+ships off rather than on.
+

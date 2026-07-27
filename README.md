@@ -147,6 +147,12 @@ It runs over stdio and reuses the same tool implementations as the `/agent` endp
 `DATABASE_URL` and `OPENAI_API_KEY` in the environment; the list tools work from the corpus files
 alone.)
 
+**Hosted over HTTP (opt-in).** The same server can run over streamable HTTP on the API itself: set
+`ENABLE_MCP_HTTP=1` and the tools are served at `/mcp` for any HTTP MCP client — no separate service.
+It is **off by default**, so it can't affect the live API unless enabled (verified locally with a real
+MCP client). Note: `/mcp` is a mounted sub-app and is not covered by the LLM-endpoint rate limiter, so
+throttle it before exposing it widely.
+
 ## Run it with Docker
 
 The API ships with a `Dockerfile` (single slim stage, non-root user, dependency-layer caching,

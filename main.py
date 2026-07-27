@@ -36,7 +36,28 @@ load_dotenv()
 logger = configure_logging("samuel-ai-api")   # structured JSON logs to stdout (Render captures them)
 
 # The app object is what the server (uvicorn) runs. In Express you'd write: const app = express()
-app = FastAPI(title="Ask Me About Samuel")
+#
+# Opt-in hosted MCP: when ENABLE_MCP_HTTP is set, the portfolio MCP server is also served over
+# streamable HTTP at /mcp on this same app — the same four tools as the stdio server. It is OFF
+# by default, so production is unchanged unless the env var is deliberately set; the mount cannot
+# destabilize the live API unless someone turns it on.
+_ENABLE_MCP_HTTP = os.getenv("ENABLE_MCP_HTTP", "").lower() in ("1", "true", "yes")
+if _ENABLE_MCP_HTTP:
+    from contextlib import asynccontextmanager
+    from mcp_server import mcp as _portfolio_mcp
+
+    _portfolio_mcp.settings.streamable_http_path = "/"     # so mounting at /mcp serves exactly /mcp
+    _mcp_http_app = _portfolio_mcp.streamable_http_app()
+
+    @asynccontextmanager
+    async def _lifespan(_app):
+        # Run the MCP session manager's lifespan alongside the API's.
+        async with _mcp_http_app.router.lifespan_context(_app):
+            yield
+
+    app = FastAPI(title="Ask Me About Samuel", lifespan=_lifespan)
+else:
+    app = FastAPI(title="Ask Me About Samuel")
 
 # CORS controls which websites may call this API from a browser. Production is locked to the
 # live portfolio site. Local development adds localhost origins through the CORS_ORIGINS
@@ -527,6 +548,11 @@ def agent_stream(request: AgentRequest, http_request: Request):
 
     return StreamingResponse(event_stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+if _ENABLE_MCP_HTTP:
+    # Hosted MCP over streamable HTTP at /mcp (opt-in). Mounted last, after every native route.
+    app.mount("/mcp", _mcp_http_app)
 
 
 # Note: these handlers are plain `def` (not `async def`). FastAPI runs sync handlers in a
