@@ -24,8 +24,9 @@ deploying real things, then documenting the decisions, trade-offs, and failures 
 Samuel is open to remote engineering roles.
 
 ## Title
-Samuel's current title is "Full-Stack AI Engineer." He earns the "Full-Stack Agentic AI Engineer"
-title once agentic tool use and a published MCP server ship — that work is in progress, not done.
+Samuel's current title is "Full-Stack AI Engineer." Agentic tool use has now shipped — a live
+tool-using agent that calls real tools over his portfolio data. He earns the "Full-Stack Agentic
+AI Engineer" title once the published MCP server also ships, which is in progress, not done.
 
 ## Contact
 - GitHub: github.com/samchill93
