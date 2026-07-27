@@ -65,6 +65,8 @@ Portfolio site (frontend)
   thread-safe, bounded in-memory metrics registry read by `/metrics`.
 - **`agent.py`** — the tool-using agent (Module 5): four read-only tools over Samuel's data and a
   hand-written loop that lets Claude call them, iterate, and return every step.
+- **`mcp_server.py`** — an MCP server (Module 5) exposing those same four tools over the Model
+  Context Protocol (stdio), so any MCP client like Claude Desktop can use them.
 - **`retrieve.py`** — `search(vector, k)` (pure database cosine search, testable on its own) and
   `retrieve(query, k)` (embeds the question, then searches).
 - **`rag.py`** — assembles the grounded system prompt and, after the model answers, renumbers
@@ -74,10 +76,10 @@ Portfolio site (frontend)
 - **`schema.sql` / `apply_schema.py`** — `documents`, `chunks` (with the HNSW vector index),
   and `inquiries`; idempotent to apply.
 - **`corpus/`** — the markdown documents the bot answers from (its claims surface).
-- **`test_main.py` / `test_retrieve.py` / `test_rag.py` / `test_obs.py` / `test_agent.py`** — pytest
-  suite (51 tests): chunking, the grounding/refusal decision, citation renumbering/dedup/snippets,
-  honesty guards, the observability registry + middleware, and the agent tools + loop (driven by a
-  fake client, no network).
+- **`test_main.py` / `test_retrieve.py` / `test_rag.py` / `test_obs.py` / `test_agent.py` / `test_mcp.py`** —
+  pytest suite (55 tests): chunking, the grounding/refusal decision, citation renumbering/dedup/snippets,
+  honesty guards, the observability registry + middleware, the agent tools + loop (fake client, no
+  network), and the MCP server (tools listed and called over a real in-memory client↔server session).
 
 ## Built with
 
@@ -119,6 +121,28 @@ locked because that variable isn't set on Render.
 Editing the corpus is the normal way to change what the bot knows: change a file in
 `corpus/`, re-run `python ingest.py`, and the new content is retrievable immediately.
 
+## Use it as an MCP server
+
+The same portfolio tools are exposed over the Model Context Protocol, so an MCP client can search
+Samuel's documents and list his skills, projects, and services. To use it in Claude Desktop, add
+to `claude_desktop_config.json` and restart:
+
+```json
+{
+  "mcpServers": {
+    "samuel-portfolio": {
+      "command": "python",
+      "args": ["/absolute/path/to/samuel-ai-api/mcp_server.py"]
+    }
+  }
+}
+```
+
+It runs over stdio and reuses the same tool implementations as the `/agent` endpoint. Tools:
+`search_portfolio`, `list_skills`, `list_projects`, `list_services`. (`search_portfolio` needs
+`DATABASE_URL` and `OPENAI_API_KEY` in the environment; the list tools work from the corpus files
+alone.)
+
 ## Roadmap (the Living Portfolio)
 
 - **Evals** ✓ shipped — a 108-case golden dataset and an LLM-as-judge (recall@5 0.992,
@@ -129,5 +153,5 @@ Editing the corpus is the normal way to change what the bot knows: change a file
   retrieval into embed-vs-db time, and pool the database connection.
 - **Agents** ✓ shipped — `POST /agent` runs a tool-use loop over Samuel's data (search, skills,
   projects, services) and returns every step; try it live on the site.
-- **MCP server** — expose the same tools via the Model Context Protocol (in progress). Then
-  streaming, Docker, and Terraform.
+- **MCP server** ✓ shipped — the same tools over the Model Context Protocol (stdio), verified with
+  a real MCP client; add it to Claude Desktop (see below). Next: streaming, Docker, Terraform.

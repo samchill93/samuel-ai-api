@@ -189,3 +189,23 @@ roadmap now lists Agents (shipped) and MCP server (planned) separately. The publ
 endpoints have no rate limiting yet; that is the honest Module 6 hardening item. Judge calibration
 (Module 2) and teach-back remain the standing open gates.
 
+**2026-07-27 · Module 5 (second half) — MCP server, and the Agentic title earned ·** `mcp_server.py`
+is a FastMCP server that publishes the agent's four read-only tools over the Model Context Protocol,
+so any MCP client (Claude Desktop, an IDE, another agent) can search Samuel's documents and list his
+skills, projects, and services. The tools are thin wrappers over the same `agent.py` implementations
+— two surfaces, one source of truth. Verified end to end over the real protocol two ways: an
+in-memory client<->server session in the test suite, and a real stdio subprocess (server
+"samuel-portfolio", protocol 2025-11-25) that initialised, listed the four tools, and ran
+search_portfolio through the full embedding + pgvector path. 4 new tests (55 total); the README
+documents the Claude Desktop config. Shipping this met the corpus's title condition — both agentic
+halves (the live agent and the MCP server) are done — so profile.md and the site title update to
+"Full-Stack Agentic AI Engineer", reflecting shipped work, not aspiration. Case study:
+`case-studies/module-5-mcp.md`. Capabilities demonstrated: exposing tools over an open protocol, one
+implementation behind two surfaces, and verifying an MCP server against a real client rather than
+assuming it works.
+
+**Open at this entry:** the MCP server ships over stdio (run locally by the client); a hosted HTTP
+transport is a future add, gated on doing it without risking the live API. Rate-limiting the public
+agent/chat endpoints remains the Module 6 hardening item. Judge calibration (Module 2) and teach-back
+remain the standing open gates.
+
