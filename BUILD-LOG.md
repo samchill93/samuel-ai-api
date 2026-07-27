@@ -165,3 +165,27 @@ new backend — it consumes the endpoint shipped in Module 3. Verified live at
 into an honest public dashboard, live polling with a sensible degraded state, and treating
 server-provided strings as untrusted in the browser.
 
+**2026-07-27 · Module 5 — a tool-using agent that shows its work ·** `POST /agent` runs a
+hand-written tool-use loop: Claude decides which of four read-only tools to call over Samuel's
+real data (search_portfolio, list_skills, list_projects, list_services), iterates to a bounded
+cap, and returns the final answer plus every step it took — reasoning and tool calls — so the
+autonomy is visible, not a black box. `agent.py` holds the tools and the loop (client injected,
+so it is unit-tested with a fake — no key, no network); `main.py` wires the endpoint with
+request-id, timing, and structured logging. The site's new Agent section lets anyone give it a
+task (a job description, a build request, a fit question) and watch the steps; all model/tool
+output is rendered with createElement + textContent so nothing from the API can inject HTML. A
+live fit-analysis run made 4 tool calls across 2 model turns for well under a cent, producing a
+per-requirement covered/partial/gap verdict grounded in real shipped work. 9 new tests (51 total).
+Building the tools surfaced and fixed a real honesty drift — the corpus still listed evals and
+observability as "currently building" after both shipped — so skills.md and the title condition in
+profile.md were corrected, re-ingested, and the honesty guards updated. Verified live: /agent
+returns grounded multi-tool answers and /chat reflects the corrected shipped/building split. Case
+study: `case-studies/module-5-agents.md`. Capabilities demonstrated: a real agentic loop (not a
+scripted pipeline), grounded read-only tool use, transparent step traces, testing an agent without
+the network, and handling untrusted model output safely in the DOM.
+
+**Open at this entry:** the MCP server (the second half of the agents module) is not built — the
+roadmap now lists Agents (shipped) and MCP server (planned) separately. The public agent and chat
+endpoints have no rate limiting yet; that is the honest Module 6 hardening item. Judge calibration
+(Module 2) and teach-back remain the standing open gates.
+

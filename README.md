@@ -33,6 +33,9 @@ built with them.
   structured JSON line, and `/chat` returns a per-request trace (retrieval vs model time,
   sources, similarity); `GET /metrics` reports request counts, latency p50/p95, and the
   running token/cost tally, honestly scoped to the current process.
+- **Agentic** — `POST /agent` runs a tool-using loop: Claude decides which read-only tools to
+  call over Samuel's real data (search the corpus, list skills / projects / services), iterates,
+  and returns the answer plus every step it took, so the run is transparent.
 
 ## Architecture
 
@@ -57,9 +60,11 @@ Portfolio site (frontend)
 
 ## Key files
 
-- **`main.py`** — the FastAPI app: `/health`, `/version`, `/metrics`, `/inquiry`, and the RAG `/chat`.
+- **`main.py`** — the FastAPI app: `/health`, `/version`, `/metrics`, `/inquiry`, the RAG `/chat`, and the `/agent` loop.
 - **`obs.py`** — observability (Module 3): a JSON log formatter, a request-id generator, and a
   thread-safe, bounded in-memory metrics registry read by `/metrics`.
+- **`agent.py`** — the tool-using agent (Module 5): four read-only tools over Samuel's data and a
+  hand-written loop that lets Claude call them, iterate, and return every step.
 - **`retrieve.py`** — `search(vector, k)` (pure database cosine search, testable on its own) and
   `retrieve(query, k)` (embeds the question, then searches).
 - **`rag.py`** — assembles the grounded system prompt and, after the model answers, renumbers
@@ -69,9 +74,10 @@ Portfolio site (frontend)
 - **`schema.sql` / `apply_schema.py`** — `documents`, `chunks` (with the HNSW vector index),
   and `inquiries`; idempotent to apply.
 - **`corpus/`** — the markdown documents the bot answers from (its claims surface).
-- **`test_main.py` / `test_retrieve.py` / `test_rag.py` / `test_obs.py`** — pytest suite (42 tests):
-  chunking, the grounding/refusal decision, citation renumbering/dedup/snippets, honesty guards,
-  and the observability registry, JSON logs, and request middleware.
+- **`test_main.py` / `test_retrieve.py` / `test_rag.py` / `test_obs.py` / `test_agent.py`** — pytest
+  suite (51 tests): chunking, the grounding/refusal decision, citation renumbering/dedup/snippets,
+  honesty guards, the observability registry + middleware, and the agent tools + loop (driven by a
+  fake client, no network).
 
 ## Built with
 
@@ -121,4 +127,7 @@ Editing the corpus is the normal way to change what the bot knows: change a file
 - **Observability** ✓ shipped — per-request ids, structured JSON logs, `/chat` tracing, and a
   `/metrics` endpoint (latency p50/p95, request counts, running token/cost). Next: split
   retrieval into embed-vs-db time, and pool the database connection.
-- **Agentic mode** — tool use, and an MCP server exposing the portfolio tools.
+- **Agents** ✓ shipped — `POST /agent` runs a tool-use loop over Samuel's data (search, skills,
+  projects, services) and returns every step; try it live on the site.
+- **MCP server** — expose the same tools via the Model Context Protocol (in progress). Then
+  streaming, Docker, and Terraform.
