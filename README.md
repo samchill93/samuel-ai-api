@@ -36,6 +36,8 @@ built with them.
 - **Agentic** — `POST /agent` runs a tool-using loop: Claude decides which read-only tools to
   call over Samuel's real data (search the corpus, list skills / projects / services), iterates,
   and returns the answer plus every step it took, so the run is transparent.
+- **Streaming** — `POST /chat/stream` sends the answer token-by-token over Server-Sent Events, so
+  the chat widget types it out live and then finalizes citations and cost from a closing event.
 
 ## Architecture
 
@@ -60,7 +62,7 @@ Portfolio site (frontend)
 
 ## Key files
 
-- **`main.py`** — the FastAPI app: `/health`, `/version`, `/metrics`, `/inquiry`, the RAG `/chat`, and the `/agent` loop.
+- **`main.py`** — the FastAPI app: `/health`, `/version`, `/metrics`, `/inquiry`, the RAG `/chat` (and streaming `/chat/stream`), and the `/agent` loop.
 - **`obs.py`** — observability (Module 3): a JSON log formatter, a request-id generator, and a
   thread-safe, bounded in-memory metrics registry read by `/metrics`.
 - **`agent.py`** — the tool-using agent (Module 5): four read-only tools over Samuel's data and a
@@ -77,9 +79,9 @@ Portfolio site (frontend)
   and `inquiries`; idempotent to apply.
 - **`corpus/`** — the markdown documents the bot answers from (its claims surface).
 - **`test_main.py` / `test_retrieve.py` / `test_rag.py` / `test_obs.py` / `test_agent.py` / `test_mcp.py`** —
-  pytest suite (55 tests): chunking, the grounding/refusal decision, citation renumbering/dedup/snippets,
-  honesty guards, the observability registry + middleware, the agent tools + loop (fake client, no
-  network), and the MCP server (tools listed and called over a real in-memory client↔server session).
+  pytest suite (56 tests): chunking, the grounding/refusal decision, citation renumbering/dedup/snippets,
+  honesty guards, the SSE event format, the observability registry + middleware, the agent tools + loop
+  (fake client, no network), and the MCP server (tools listed and called over a real in-memory session).
 
 ## Built with
 
@@ -154,4 +156,6 @@ alone.)
 - **Agents** ✓ shipped — `POST /agent` runs a tool-use loop over Samuel's data (search, skills,
   projects, services) and returns every step; try it live on the site.
 - **MCP server** ✓ shipped — the same tools over the Model Context Protocol (stdio), verified with
-  a real MCP client; add it to Claude Desktop (see below). Next: streaming, Docker, Terraform.
+  a real MCP client; add it to Claude Desktop (see below).
+- **Streaming** ✓ shipped — `POST /chat/stream` streams the answer token-by-token over SSE and the
+  chat widget types it live. Next: Docker, then Terraform.

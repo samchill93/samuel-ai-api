@@ -209,3 +209,24 @@ transport is a future add, gated on doing it without risking the live API. Rate-
 agent/chat endpoints remains the Module 6 hardening item. Judge calibration (Module 2) and teach-back
 remain the standing open gates.
 
+**2026-07-27 · Module 6 — token-by-token streaming ·** `POST /chat/stream` sends the answer as
+Server-Sent Events as the model writes it, then a final `done` event carries the finalized reply,
+citations, usage, and trace — so the streaming path keeps every honest extra the non-streaming `/chat`
+has (renumbered citations, touchable chips, real cost), all computed once the full text is in.
+Retrieval and grounding are shared with `/chat` through one `_retrieve_for_chat` helper, so the two
+can't drift on grounding, the $0 refusal, or errors. The chat widget reads the stream with
+`fetch` + `ReadableStream`, types the raw tokens live (following the scroll only when the reader is at
+the bottom), and on `done` swaps in the finalized reply and citations. Two buffering risks were
+checked, not assumed: the observability middleware forwards the stream (and still logs the request),
+and `Cache-Control: no-cache` + `X-Accel-Buffering: no` stop Render's proxy from holding it — verified
+live, where a real answer arrived as ~15 token events spread over ~2.9s rather than one blob. 56 tests
+(added an SSE-format guard). Corpus and honesty guards updated: streaming moves to shipped, leaving
+only Docker and Terraform in progress. Case study: `case-studies/module-6-streaming.md`. Capabilities
+demonstrated: SSE streaming from FastAPI, preserving a finalize-then-render contract under streaming,
+sharing logic between two endpoints, and proving a stream isn't buffered end to end.
+
+**Open at this entry:** the agent's steps aren't streamed yet (same SSE pattern, applied to `/agent`,
+is the next natural step). Rate-limiting the public streaming/agent/chat endpoints is still the owed
+hardening. Docker and Terraform remain on the roadmap; judge calibration and teach-back remain the
+standing gates.
+
