@@ -18,7 +18,7 @@ import psycopg                                       # PostgreSQL driver — sto
 
 from anthropic import Anthropic                     # official Claude SDK for Python
 from dotenv import load_dotenv                       # loads the .env file into environment variables
-from fastapi import FastAPI, HTTPException, Request  # the web framework (like Express, but typed)
+from fastapi import Depends, FastAPI, HTTPException, Request  # the web framework (like Express, but typed)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse       # token-by-token SSE (Module 6)
 from pydantic import BaseModel, EmailStr, Field      # typed, self-validating data models
@@ -28,6 +28,7 @@ from retrieve import retrieve, is_grounded, conversation_query   # RAG: find rel
 from rag import build_system_prompt, finalize_citations, to_plain_text, REFUSAL  # ground, cite, enforce plain text
 from obs import metrics, new_request_id, configure_logging       # observability (Module 3)
 from agent import run_agent                                       # tool-using agent (Module 5)
+from ratelimit import RateLimiter                                 # per-IP rate limiting (hardening)
 
 # Read ANTHROPIC_API_KEY (and anything else) from the .env file so it lands in the environment.
 load_dotenv()
@@ -125,6 +126,25 @@ def _answer_cost_usd(input_tokens: int, output_tokens: int) -> float:
         input_tokens / 1_000_000 * HAIKU_INPUT_USD_PER_MTOK
         + output_tokens / 1_000_000 * HAIKU_OUTPUT_USD_PER_MTOK
     )
+
+
+# ----------------------------------------------------------------------------
+# Rate limiting (hardening) — the LLM endpoints cost money and are public, so cap requests
+# per client IP. In-memory and process-local (resets on deploy); tune via env without a code
+# change. A normal visitor sends a few messages a minute — well under the cap; a script hits it.
+# ----------------------------------------------------------------------------
+RATE_LIMIT_MAX = int(os.getenv("RATE_LIMIT_MAX", "20"))          # requests per window, per IP
+RATE_LIMIT_WINDOW = float(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
+_llm_limiter = RateLimiter(RATE_LIMIT_MAX, RATE_LIMIT_WINDOW)
+
+
+def _rate_limit(http_request: Request) -> None:
+    """Dependency for the paid LLM endpoints: 429 with Retry-After when a client IP is over."""
+    ip = http_request.client.host if http_request.client else "unknown"
+    allowed, retry = _llm_limiter.check(ip, time.monotonic())
+    if not allowed:
+        raise HTTPException(status_code=429, detail="Too many requests — please slow down.",
+                            headers={"Retry-After": str(int(retry) + 1)})
 
 
 # ----------------------------------------------------------------------------
@@ -307,7 +327,7 @@ def _sse(event: dict) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse, dependencies=[Depends(_rate_limit)])
 def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
     """Answer only from Samuel's corpus (RAG): retrieve the chunks relevant to the latest
     question, ground the prompt on them, and cite the sources the reply actually used.
@@ -372,7 +392,7 @@ def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
     return ChatResponse(reply=reply_text, usage=usage, citations=citations, trace=trace)
 
 
-@app.post("/chat/stream")
+@app.post("/chat/stream", dependencies=[Depends(_rate_limit)])
 def chat_stream(request: ChatRequest, http_request: Request):
     """Streaming version of /chat (Module 6): the answer's tokens arrive as Server-Sent Events
     as the model writes them, then a final 'done' event carries the finalized reply, citations,
@@ -433,7 +453,7 @@ def chat_stream(request: ChatRequest, http_request: Request):
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-@app.post("/agent", response_model=AgentResponse)
+@app.post("/agent", response_model=AgentResponse, dependencies=[Depends(_rate_limit)])
 def agent_endpoint(request: AgentRequest, http_request: Request) -> AgentResponse:
     """Run the tool-using agent on a task (Module 5). Claude decides which tools to call over
     Samuel's real data (search his documents, list skills / projects / services), loops until it
