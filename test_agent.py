@@ -120,6 +120,23 @@ def test_agent_feeds_tool_results_back_to_the_model():
     assert tool_result_msgs[0]["content"][0]["tool_use_id"] == "t1"
 
 
+def test_run_agent_stream_yields_steps_then_done():
+    from agent import run_agent_stream
+    responses = [
+        _Resp([_Block("tool_use", name="list_projects", input={}, id="t1")],
+              stop_reason="tool_use", usage=_Usage(60, 10)),
+        _Resp([_Block("text", text="Samuel has several projects.")],
+              stop_reason="end_turn", usage=_Usage(30, 8)),
+    ]
+    events = list(run_agent_stream("list his projects", _FakeClient(responses)))
+    kinds = [k for k, _ in events]
+    assert kinds[-1] == "done" and "step" in kinds        # steps first, then a single done
+    step_payloads = [p for k, p in events if k == "step"]
+    assert any(p["type"] == "tool_call" and p["tool"] == "list_projects" for p in step_payloads)
+    done = events[-1][1]
+    assert done["stopped"] == "complete" and done["input_tokens"] == 90   # 60 + 30
+
+
 def test_agent_stops_at_iteration_cap():
     # A client that ALWAYS asks for a tool would loop forever without the cap.
     always_tool = _Resp([_Block("tool_use", name="list_services", input={}, id="t")],

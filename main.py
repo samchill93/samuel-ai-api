@@ -27,7 +27,7 @@ from about_me import ABOUT_SAMUEL                    # the assistant's persona/v
 from retrieve import retrieve, retrieve_timed, is_grounded, conversation_query   # RAG: find relevant corpus chunks
 from rag import build_system_prompt, finalize_citations, to_plain_text, REFUSAL  # ground, cite, enforce plain text
 from obs import metrics, new_request_id, configure_logging       # observability (Module 3)
-from agent import run_agent                                       # tool-using agent (Module 5)
+from agent import run_agent, run_agent_stream                     # tool-using agent (Module 5)
 from ratelimit import RateLimiter                                 # per-IP rate limiting (hardening)
 
 # Read ANTHROPIC_API_KEY (and anything else) from the .env file so it lands in the environment.
@@ -487,6 +487,46 @@ def agent_endpoint(request: AgentRequest, http_request: Request) -> AgentRespons
         elapsed_ms=round(elapsed_ms, 1),
         stopped=result["stopped"],
     )
+
+
+@app.post("/agent/stream", dependencies=[Depends(_rate_limit)])
+def agent_stream(request: AgentRequest, http_request: Request):
+    """Streaming version of /agent: each step (a thought or a tool call) is sent as a Server-Sent
+    Event the moment it happens, then a final 'done' event carries the answer, run counts, and
+    usage — so the caller watches the agent work rather than waiting for the whole run."""
+    rid = getattr(http_request.state, "request_id", "")
+    started = time.perf_counter()
+
+    def event_stream():
+        tool_calls = 0
+        final = None
+        try:
+            client = Anthropic()
+            for kind, payload in run_agent_stream(request.task, client):
+                if kind == "step":
+                    if payload["type"] == "tool_call":
+                        tool_calls += 1
+                    yield _sse({"type": "step", "step": payload})
+                else:
+                    final = payload
+        except Exception:
+            logger.exception("agent stream failed", extra={"fields": {"request_id": rid}})
+            yield _sse({"type": "error", "detail": "The agent could not complete the task."})
+            return
+
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        cost = _answer_cost_usd(final["input_tokens"], final["output_tokens"])
+        logger.info("agent_stream", extra={"fields": {
+            "request_id": rid, "iterations": final["iterations"], "tool_calls": tool_calls,
+            "input_tokens": final["input_tokens"], "output_tokens": final["output_tokens"],
+            "cost_usd": round(cost, 6), "elapsed_ms": round(elapsed_ms, 1), "stopped": final["stopped"]}})
+        yield _sse({"type": "done", "answer": to_plain_text(final["answer"]),
+                    "iterations": final["iterations"], "tool_calls": tool_calls,
+                    "usage": {"input_tokens": final["input_tokens"], "output_tokens": final["output_tokens"], "cost_usd": cost},
+                    "request_id": rid, "elapsed_ms": round(elapsed_ms, 1), "stopped": final["stopped"]})
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 # Note: these handlers are plain `def` (not `async def`). FastAPI runs sync handlers in a

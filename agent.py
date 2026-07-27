@@ -197,15 +197,14 @@ def _run_tool(name: str, args: dict) -> dict:
 # ---------------------------------------------------------------------------
 # The agent loop
 # ---------------------------------------------------------------------------
-def run_agent(task: str, client, model: str = AGENT_MODEL, max_iterations: int = MAX_ITERATIONS) -> dict:
-    """Run the tool-use loop until Claude gives a final answer or the iteration cap is hit.
+def run_agent_stream(task: str, client, model: str = AGENT_MODEL, max_iterations: int = MAX_ITERATIONS):
+    """Generator form of the agent loop: yields ("step", step) as each thought or tool call
+    happens, then ("done", summary) with the final answer and token totals. run_agent() is a
+    thin consumer of this, so the streaming and non-streaming surfaces share one loop.
 
-    `client` is an Anthropic() instance, injected so the loop is testable with a fake that
-    returns canned responses. Returns the answer plus the full ordered list of steps
-    (thoughts and tool calls) so the caller can show the agent's work.
+    `client` is an Anthropic() instance, injected so the loop is testable with a fake.
     """
     messages = [{"role": "user", "content": task}]
-    steps: list[dict] = []
     input_tokens = output_tokens = 0
     iterations = 0
 
@@ -219,25 +218,42 @@ def run_agent(task: str, client, model: str = AGENT_MODEL, max_iterations: int =
         output_tokens += resp.usage.output_tokens
         messages.append({"role": "assistant", "content": resp.content})
 
-        # Record any reasoning text the model emitted alongside its tool calls.
+        # Emit any reasoning text the model produced alongside its tool calls.
         for block in resp.content:
             if getattr(block, "type", None) == "text" and block.text.strip():
-                steps.append({"type": "thought", "text": block.text.strip()})
+                yield "step", {"type": "thought", "text": block.text.strip()}
 
         tool_uses = [b for b in resp.content if getattr(b, "type", None) == "tool_use"]
         if resp.stop_reason != "tool_use" or not tool_uses:
             answer = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text").strip()
-            return {"answer": answer, "steps": steps, "iterations": iterations,
-                    "input_tokens": input_tokens, "output_tokens": output_tokens, "stopped": "complete"}
+            yield "done", {"answer": answer, "iterations": iterations,
+                           "input_tokens": input_tokens, "output_tokens": output_tokens, "stopped": "complete"}
+            return
 
-        # Execute every requested tool and feed the results back for the next turn.
+        # Execute every requested tool, emit it, and feed the results back for the next turn.
         tool_results = []
         for tu in tool_uses:
             output = _run_tool(tu.name, tu.input)
-            steps.append({"type": "tool_call", "tool": tu.name, "input": tu.input or {}, "output": output})
+            yield "step", {"type": "tool_call", "tool": tu.name, "input": tu.input or {}, "output": output}
             tool_results.append({"type": "tool_result", "tool_use_id": tu.id, "content": json.dumps(output)})
         messages.append({"role": "user", "content": tool_results})
 
-    return {"answer": "I couldn't finish this within the step limit — try narrowing the task.",
-            "steps": steps, "iterations": iterations,
-            "input_tokens": input_tokens, "output_tokens": output_tokens, "stopped": "max_iterations"}
+    yield "done", {"answer": "I couldn't finish this within the step limit — try narrowing the task.",
+                   "iterations": iterations, "input_tokens": input_tokens,
+                   "output_tokens": output_tokens, "stopped": "max_iterations"}
+
+
+def run_agent(task: str, client, model: str = AGENT_MODEL, max_iterations: int = MAX_ITERATIONS) -> dict:
+    """Run the tool-use loop to completion and return the answer plus the full ordered list of
+    steps (thoughts and tool calls). A thin consumer of run_agent_stream, so both surfaces run
+    exactly one loop implementation."""
+    steps: list[dict] = []
+    final: dict = {}
+    for kind, payload in run_agent_stream(task, client, model, max_iterations):
+        if kind == "step":
+            steps.append(payload)
+        else:
+            final = payload
+    return {"answer": final["answer"], "steps": steps, "iterations": final["iterations"],
+            "input_tokens": final["input_tokens"], "output_tokens": final["output_tokens"],
+            "stopped": final["stopped"]}
