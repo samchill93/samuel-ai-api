@@ -113,10 +113,10 @@ def _section(header_prefix: str) -> str:
 
 def test_shipped_skills_do_not_claim_in_progress_work():
     """The 'shipped' section must not list anything Samuel hasn't shipped.
-    RAG, evals, observability, agent tool use, and the MCP server are shipped as their
-    modules deploy; streaming, Docker, and Terraform are still in progress."""
+    RAG, evals, observability, agent tool use, the MCP server, and streaming are shipped as
+    their modules deploy; Docker and Terraform are still in progress."""
     shipped = _section("## Shipped").lower()
-    for overclaim in ["docker", "terraform", "streaming"]:
+    for overclaim in ["docker", "terraform"]:
         assert overclaim not in shipped, f"'{overclaim}' must not appear as a shipped skill"
 
 
