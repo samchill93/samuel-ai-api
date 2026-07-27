@@ -153,3 +153,15 @@ cuts are splitting retrieval into embed-vs-db timing and pooling the database co
 public glass-box panel stays flagged off (public after Module 6); the site's roadmap
 Observability row now points to the live `/metrics` as proof of the shipped capability.
 
+**2026-07-27 · Module 4 — Live Metrics Page ·** The site now surfaces the Module 3
+observability data as a public, self-updating panel ("Live metrics", `#metrics`, behind the
+`metricsPage` flag). It reads `/metrics` on load and every 15s and renders the system reporting
+on itself — requests served, latency p50/p95, chat answers/refusals, running cost, and request
+breakdowns by status and path — with an honest "since this deploy" window (no lifetime-total
+pretence) and a graceful "waking up" state for the free-tier backend. Path keys from the
+endpoint are HTML-escaped before they touch the DOM, since any caller can request any path. No
+new backend — it consumes the endpoint shipped in Module 3. Verified live at
+`living-portfolio-chi.vercel.app`. Capabilities demonstrated: turning an operational endpoint
+into an honest public dashboard, live polling with a sensible degraded state, and treating
+server-provided strings as untrusted in the browser.
+
