@@ -89,11 +89,12 @@ Built the evaluation engine for the RAG assistant. A 108-example golden dataset
 by a 12-agent workflow — six category generators plus six adversarial verifiers that
 checked every label against the corpus. `evals/harness.py` runs each example through the
 real pipeline and scores the objective dimensions: retrieval recall@5 = 0.992, citation
-validity 95/95 (zero fabricated citations). `evals/judge.py` adds an LLM-as-judge (Claude
+validity 92/92 (zero fabricated citations). `evals/judge.py` adds an LLM-as-judge (Claude
 Sonnet 5 — stronger than the Haiku that writes the answers), scoring groundedness,
 behaviour correctness, and completeness on the actual replies, with the corpus sent as a
-cached prefix (~$0.20 per full run, ~350k tokens from cache): overall pass ~0.93, grounded
-~0.95, behaviour-correct 0.98. The judge caught a live honesty bug — asked "can he do
+cached prefix (~$0.20 per full run, ~354k tokens from cache): overall pass 0.917, grounded
+0.944, behaviour-correct 0.981 (numbers from the run in `evals/judged.json`; both
+generation and judging are non-deterministic, so they move ~0.02 run-to-run). The judge caught a live honesty bug — asked "can he do
 streaming and Terraform?", the bot answered "yes, he's shipped them", when the corpus lists
 both as in progress. The grounding rule was strengthened, the fix re-measured and deployed,
 and verified on production (the bot now frames that work as in progress). `evals/calibrate.py`
@@ -103,8 +104,10 @@ objective retrieval/citation metrics, LLM-as-judge with prompt caching, and clos
 full eval loop — measure, find a real bug, fix, re-measure, deploy, verify.
 
 **Open at this entry:** the calibration slice (`data/calibration_slice.json`, 24 items)
-awaits Samuel's hand labels — the senior signal ("judge agreement vs hand labels"). After
-calibration: a public Evals page with the numbers and the Module 2 case study. Judge
-scores show run-to-run variance (both generation and judging are non-deterministic), which
-is exactly why calibration and recurring-failure analysis matter more than a single run.
+awaits Samuel's hand labels — the senior signal ("judge agreement vs hand labels"). The
+Module 2 case study is drafted (`case-studies/module-2-evals.md`) with every judge number
+labeled uncalibrated until that check runs. Still open after calibration: a public Evals
+page rendering the calibrated numbers. Judge scores show run-to-run variance (both
+generation and judging are non-deterministic), which is exactly why calibration and
+recurring-failure analysis matter more than a single run.
 
