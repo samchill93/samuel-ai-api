@@ -2,6 +2,9 @@
 
 ## Shipped — technologies Samuel has built and deployed with
 - **AI / LLM:** Claude API, prompt & context engineering, RAG with visible source citations (pgvector + OpenAI embeddings), grounding and calibrated refusal
+- **LLM evaluations:** a 108-case golden dataset scored by a deterministic harness and an LLM-as-judge, with published quality scores (retrieval recall, citation validity, groundedness); judge-vs-human calibration is the one remaining step
+- **Observability:** per-request tracing, structured JSON logs, request IDs, and a live metrics endpoint (latency percentiles, request counts, running cost)
+- **Agents / tool use:** a hand-written tool-use agent loop where Claude calls real tools over the portfolio data, iterates, and returns every step it took
 - **Frontend:** React, Next.js, React Native (Expo), Tailwind CSS, Vite
 - **Backend:** Node.js, Express, Python, FastAPI, Firebase (Auth + Firestore), Stripe
 - **Infra & tooling:** Google Cloud, Vercel, Render, GitHub Actions (CI/CD)
@@ -10,7 +13,6 @@
 ## Currently building — in progress, not yet shipped
 Samuel is extending his Living Portfolio with production-grade LLM engineering, in public,
 one piece at a time. These are in progress — they are not finished work or past experience:
-- LLM evaluations (a golden dataset scored by an LLM-as-judge calibrated to hand labels)
-- Observability and cost/latency tracing
-- Agents with tool use, and a published MCP server
-- Response streaming, containerization (Docker), and infrastructure-as-code (Terraform)
+- A published MCP server exposing the portfolio tools to any MCP client
+- Response streaming (token-by-token responses)
+- Containerization (Docker) and infrastructure-as-code (Terraform)

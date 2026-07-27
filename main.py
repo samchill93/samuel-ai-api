@@ -25,6 +25,7 @@ from about_me import ABOUT_SAMUEL                    # the assistant's persona/v
 from retrieve import retrieve, is_grounded, conversation_query   # RAG: find relevant corpus chunks
 from rag import build_system_prompt, finalize_citations, to_plain_text, REFUSAL  # ground, cite, enforce plain text
 from obs import metrics, new_request_id, configure_logging       # observability (Module 3)
+from agent import run_agent                                       # tool-using agent (Module 5)
 
 # Read ANTHROPIC_API_KEY (and anything else) from the .env file so it lands in the environment.
 load_dotenv()
@@ -170,6 +171,33 @@ class ChatResponse(BaseModel):
     usage: Usage                        # token counts + computed cost for the honest cost footer
     citations: list[Citation] = []      # the sources the answer actually cited (RAG, Module 1)
     trace: Trace | None = None          # per-request timing + retrieval trace (Module 3)
+
+
+# --- Agent (Module 5): a task in, an answer plus the steps the agent took ---------------
+class AgentRequest(BaseModel):
+    task: str = Field(min_length=1, max_length=4000)   # a question or a job description to assess
+
+
+class AgentStep(BaseModel):
+    """One step in the agent's run — either a 'thought' (reasoning text) or a 'tool_call'
+    (which tool it invoked, with what input, and what came back). This is what makes the
+    agent transparent: the caller sees every move, not just the final answer."""
+    type: str
+    text: str | None = None
+    tool: str | None = None
+    input: dict | None = None
+    output: dict | None = None
+
+
+class AgentResponse(BaseModel):
+    answer: str
+    steps: list[AgentStep]              # the ordered trace of thoughts and tool calls
+    iterations: int                     # how many model turns the loop took
+    tool_calls: int                     # how many tools were actually run
+    usage: Usage                        # summed tokens + cost across the whole loop
+    request_id: str
+    elapsed_ms: float
+    stopped: str                        # 'complete' or 'max_iterations'
 
 
 class VersionResponse(BaseModel):
@@ -334,6 +362,39 @@ def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
         "input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens,
         "cost_usd": round(usage.cost_usd, 6)}})
     return ChatResponse(reply=reply_text, usage=usage, citations=citations, trace=trace)
+
+
+@app.post("/agent", response_model=AgentResponse)
+def agent_endpoint(request: AgentRequest, http_request: Request) -> AgentResponse:
+    """Run the tool-using agent on a task (Module 5). Claude decides which tools to call over
+    Samuel's real data (search his documents, list skills / projects / services), loops until it
+    can answer, and every step is returned so the caller can see the agent's work. The tools are
+    read-only — the agent looks things up, it never takes an action."""
+    rid = getattr(http_request.state, "request_id", "")
+    started = time.perf_counter()
+    try:
+        result = run_agent(request.task, Anthropic())   # Anthropic() reads the key from the env
+    except Exception:
+        logger.exception("agent run failed", extra={"fields": {"request_id": rid}})
+        raise HTTPException(status_code=502, detail="The agent could not complete the task.")
+
+    elapsed_ms = (time.perf_counter() - started) * 1000
+    cost = _answer_cost_usd(result["input_tokens"], result["output_tokens"])
+    tool_calls = sum(1 for s in result["steps"] if s["type"] == "tool_call")
+    logger.info("agent", extra={"fields": {
+        "request_id": rid, "iterations": result["iterations"], "tool_calls": tool_calls,
+        "input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"],
+        "cost_usd": round(cost, 6), "elapsed_ms": round(elapsed_ms, 1), "stopped": result["stopped"]}})
+    return AgentResponse(
+        answer=to_plain_text(result["answer"]),
+        steps=[AgentStep(**s) for s in result["steps"]],
+        iterations=result["iterations"],
+        tool_calls=tool_calls,
+        usage=Usage(input_tokens=result["input_tokens"], output_tokens=result["output_tokens"], cost_usd=cost),
+        request_id=rid,
+        elapsed_ms=round(elapsed_ms, 1),
+        stopped=result["stopped"],
+    )
 
 
 # Note: these handlers are plain `def` (not `async def`). FastAPI runs sync handlers in a
