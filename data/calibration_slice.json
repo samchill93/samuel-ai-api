@@ -1,0 +1,251 @@
+{
+  "instructions": "Label each item BLIND — decide for yourself, the judge's verdict is not shown. For each item, read `question` and `assistant_reply`. Set `human_pass` to true if the reply is good — grounded in Samuel's documents, correct, and answers when it should / refuses when the docs don't cover it. Set false if it's bad — hallucinates, is wrong, over-refuses, or presents in-progress work as shipped. `key_facts` is the rubric of what a correct answer needs. Add an optional `human_note`. Save the file, then tell Claude 'labels done' and it will run: python evals/calibrate.py score",
+  "items": [
+    {
+      "id": "q001",
+      "question": "What did Samuel do for work before he moved into engineering?",
+      "expected_behavior": "answer",
+      "key_facts": "Before engineering, Samuel spent about seven years as a technical project manager, where he led software development teams and designed QA processes.",
+      "assistant_reply": "Before moving into engineering, Samuel spent about seven years as a technical project manager, where he led software development teams and designed QA processes [1]. That experience shapes how he builds now — he pairs hands-on engineering with real delivery discipline, focusing on scoping, shipping, and testing software rather than just prototyping it [1].",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q007",
+      "question": "You mentioned he was a project manager — how does that background show up in the way he engineers now?",
+      "expected_behavior": "answer",
+      "key_facts": "It gives him real delivery discipline — scoping, shipping, and testing software end to end rather than just prototyping; he pairs hands-on engineering with that discipline.",
+      "assistant_reply": "That experience shapes how he builds now: he pairs hands-on engineering with real delivery discipline — scoping, shipping, and testing software, not just prototyping it [1].\n\nMore concretely, you see it in his approach. He ships end to end: from data model and API through deployment and automated tests. He also documents architecture decisions and trade-offs so every build is defensible in an interview [1]. That combination of getting things live and being able to explain why he made each choice reflects the discipline he learned as a PM.",
+      "human_pass": null,
+      "human_note": "",
+      "prior_turns": [
+        {
+          "role": "user",
+          "content": "What did Samuel do before he got into engineering?"
+        },
+        {
+          "role": "assistant",
+          "content": "Before moving into engineering, Samuel spent about seven years as a technical project manager, where he led software development teams and designed QA processes."
+        }
+      ]
+    },
+    {
+      "id": "q013",
+      "question": "What's the best email address or phone number to reach Samuel?",
+      "expected_behavior": "refuse",
+      "key_facts": "Must refuse: the corpus lists only GitHub and LinkedIn as contact channels and includes no email or phone number.",
+      "assistant_reply": "I don't have Samuel's email or phone number in the sources I have access to. \n\nYou can reach him through his GitHub or LinkedIn:\n- GitHub: github.com/samchill93\n- LinkedIn: linkedin.com/in/therealsamhill\n\nThose are the best ways to get in touch directly.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q017",
+      "question": "I see React on his list — has he actually shipped something with it, or is it just a buzzword on the page?",
+      "expected_behavior": "answer",
+      "key_facts": "Yes — React is one of his shipped frontend technologies, and it's used in production: Cadence, his AI customer-support chatbot, has a React frontend talking to a serverless function. Real and deployed, not just listed.",
+      "assistant_reply": "Samuel has shipped multiple React projects in production.\n\nHe built a five-language consulting platform [1] with React as part of a full-stack client engagement — that one includes Firebase Auth, Stripe payments, ~486 automated tests, and CI/CD, all shipped for a real client.\n\nHe also shipped a support bot [2] built with React and Vite, deployed on Vercel, that uses the Claude API to answer customer questions with grounded, calibrated responses.\n\nAnd he's currently building extensions to his Living Portfolio [3] that will add production-grade LLM work — also React-based.\n\nSo yes — React is backed by real, shipped work, not just resume padding.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q020",
+      "question": "Can he integrate Stripe for payments in a real production app, or has he only done demos?",
+      "expected_behavior": "answer",
+      "key_facts": "Yes, in production: the anonymized consulting platform he built and shipped end to end runs Stripe payments in production (alongside Firebase Auth). Stripe is also on his shipped backend skills list.",
+      "assistant_reply": "Samuel has shipped Stripe payments in production. He built a complete consulting platform for a real client that included Stripe payments alongside Firebase authentication — both running in production [1][1].\n\nThis wasn't a demo or prototype. The platform handles actual transactions for a consulting practice, and it's part of a broader production stack that includes ~486 automated tests, CI/CD, and cloud deployment [1].\n\nSo yes — he has real, shipped experience integrating Stripe into a full-stack application.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q024",
+      "question": "Does Samuel have real CI/CD experience?",
+      "expected_behavior": "answer",
+      "key_facts": "Yes — GitHub Actions for CI/CD is on his shipped tooling list, and the consulting platform ships behind CI/CD with a comprehensive automated test suite (~486 tests), so changes go out behind quality gates rather than manual QA.",
+      "assistant_reply": "Yes, Samuel has CI/CD experience. According to his skills, he has shipped work using GitHub Actions (CI/CD) [1]. This is listed under his \"Shipped\" technologies—meaning he's actually deployed it in production, not just studied it.\n\nThat said, his portfolio doesn't detail the scope or complexity of those CI/CD pipelines. If you need specifics about what workflows he's built, his testing strategy, or deployment automation patterns, you'd want to ask him directly.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q025",
+      "question": "Recruiter here — can he build agentic systems with tool use and a published MCP server?",
+      "expected_behavior": "answer",
+      "key_facts": "That's in progress, not yet shipped. Agents with tool use and a published MCP server are what he's currently building — and he earns the 'Full-Stack Agentic AI Engineer' title only once they ship. Should not be presented as completed experience.",
+      "assistant_reply": "Great question. Samuel is currently building agentic systems with tool use and a published MCP server as part of his Living Portfolio [1], but that work is not yet shipped — it's in progress [1][1].\n\nWhat he has shipped and deployed in production is a full-stack AI system: a FastAPI backend on the Claude API with RAG, visible source citations, and grounded refusal [2]. He's also shipped observability and infrastructure work, and he understands cost/latency tracing [1].\n\nSo he has the foundation and is actively building toward those agentic capabilities. If you're hiring for a role that needs those skills *today*, it's worth a direct conversation with Samuel about the timeline and scope of what he's building — he documents his decisions openly, so you can see exactly where he is. His GitHub is github.com/samchill93 and you can reach out via LinkedIn at linkedin.com/in/therealsamhill [3].",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q028",
+      "question": "Has he shipped anything running in Docker containers in production?",
+      "expected_behavior": "answer",
+      "key_facts": "No production Docker yet — containerization (Docker) is in progress on his list, not yet shipped. It must not be presented as completed or as production experience.",
+      "assistant_reply": "According to the sources I have, Samuel has not yet shipped Docker in production. Containerization (Docker) is listed as something he is currently building — in progress, not yet shipped [1][1].\n\nSamuel has shipped production work with other infrastructure — he deployed the Consulting Platform on Google Cloud Run with CI/CD [2][2] — but Docker containers specifically are part of his in-progress learning right now.\n\nIf you'd like to know more about his containerization or infrastructure plans, I'd suggest reaching out to Samuel directly.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q032",
+      "question": "Has he deployed workloads on Kubernetes?",
+      "expected_behavior": "refuse",
+      "key_facts": "Kubernetes appears nowhere in the corpus (his deploys are Render, Vercel, Google Cloud Run; containerization via Docker is only in progress). The assistant should say Kubernetes isn't among his documented skills, not guess.",
+      "assistant_reply": "I don't have information about Kubernetes in Samuel's sources. His infrastructure experience includes Google Cloud, Vercel, Render, and containerization with Docker [1], but the sources don't mention Kubernetes specifically.\n\nFor a detailed answer on that, I'd suggest reaching out to Samuel directly — GitHub: github.com/samchill93 or LinkedIn: linkedin.com/in/therealsamhill.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q035",
+      "question": "What is Cadence?",
+      "expected_behavior": "answer",
+      "key_facts": "Cadence is a custom AI customer-support chatbot built on the Claude API. It answers from a product's real knowledge instead of making things up, and hands off cleanly to a human when a question needs one. It's live and deployed at cadence-support-bot.vercel.app.",
+      "assistant_reply": "Cadence is a custom AI customer-support chatbot built on the Claude API [1]. It's live and deployed at cadence-support-bot.vercel.app [1].\n\nThe core idea is that it answers questions grounded in a product's real knowledge base instead of making things up. When a question needs human attention — like a billing issue — it hands off cleanly to a person rather than guessing [1].\n\nHere's what Samuel shipped: a React frontend that talks to a serverless function. That function holds the API key securely (so the browser never sees it) and calls Claude with an engineered system prompt [1]. The UI includes sample-question chips and is mobile-friendly [1].\n\nSamuel chose to ground answers through the system prompt rather than RAG, since the knowledge base is small and bounded — retrieval would add latency and complexity without gaining accuracy at that scale. RAG is documented as the next step as the corpus grows [1].\n\nThe philosophy is clear: a support bot that makes up policy is worse than one that escalates. So refusal and human handoff win over best-guess answers [1].\n\nStack is React, Vite, Vercel serverless functions, and the Claude API [1].",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q041",
+      "question": "Can you tell me about the anonymous consulting platform Samuel built?",
+      "expected_behavior": "answer",
+      "key_facts": "It's a complete production full-stack platform built and shipped end to end for a consulting practice, shown anonymously as client work. It has Firebase auth and Stripe payments in production, a five-language internationalized UI, a modular ES6 architecture, CI/CD, and ~486 automated tests.",
+      "assistant_reply": "Samuel built a complete production full-stack platform for a consulting practice, shipped end to end [1].\n\nThe platform includes Firebase authentication and Stripe payments running in production, a five-language internationalized UI, and a modular ES6 architecture with continuous integration and deployment [1].\n\nBehind the scenes, Samuel made deliberate design choices: he built ~486 automated tests plus CI/CD so changes ship behind quality gates instead of relying on manual QA. He used Firebase Auth and Stripe for security-critical paths rather than building those from scratch — letting hardened services handle authentication and payments while his custom code went where it could differentiate [1].\n\nThe internationalization was designed into the architecture from the start, not added as an afterthought [1].\n\nThe stack was JavaScript/TypeScript with modular ES6, Firebase (Auth + Firestore), and cloud deployment [1]. This is a concrete example of Samuel shipping production full-stack capability — authentication, payments, testing, CI/CD, and cloud infrastructure all working together for a real client [1].",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q047",
+      "question": "What exactly is the Living Portfolio?",
+      "expected_behavior": "answer",
+      "key_facts": "A portfolio that demonstrates Samuel's skills by being built with them — an AI you can interview about his experience, extended in public one engineering capability at a time. It's a FastAPI backend on the Claude API (deployed on Render) with an 'Ask my AI' chat widget on a Vercel site, and it uses RAG with visible citations over his real documents.",
+      "assistant_reply": "The Living Portfolio is Samuel's portfolio itself — it's a project designed to demonstrate his AI engineering skills by using those exact skills to build it.\n\nHere's what's shipped right now [1]:\n\nA typed Python backend (FastAPI) running on the Claude API, deployed on Render as an always-on service. On the front end, there's an \"Ask my AI\" chat widget embedded in his portfolio site on Vercel. The widget is wired to that backend.\n\nThe core feature is RAG with visible source citations [1]. The backend retrieves the most relevant passages from Samuel's real documents stored in a Neon Postgres database with pgvector, answers only from those documents, shows you which sources it used, and refuses to answer when the documents don't cover a question. It's live in production right now. The backend holds the API key and system prompt, so the browser never touches secrets.\n\nWhat makes it clever is the philosophy [1]: instead of just listing \"I can do RAG, evals, observability, agents\" on a resume, Samuel is building those capabilities in public, one piece at a time, and the portfolio itself becomes the proof. He's currently working on LLM evals, observability and cost tracking, agentic mode with a published MCP server, and containerization — but those aren't shipped yet [2].\n\nStack [1]: FastAPI, Pydantic, Claude API, OpenAI embeddings, Neon PostgreSQL + pgvector, vanilla HTML/CSS/JS frontend, Render, Vercel.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q053",
+      "question": "Why would he build a landing page like Meridian without React or any framework?",
+      "expected_behavior": "answer",
+      "key_facts": "It was framework-free on purpose to demonstrate the fundamentals underneath React — semantic HTML, a CSS design-token system, and fluid type with clamp() — rather than relying on a framework.",
+      "assistant_reply": "Samuel built Meridian without a framework on purpose — it demonstrates the fundamentals underneath React: semantic HTML, design tokens, and fluid type [1]. He wanted to show frontend craft and responsive design without leaning on framework abstractions.\n\nThe site uses some modern CSS techniques to keep it clean: a CSS design-token system, fluid typography with `clamp()`, and a self-reflowing CSS grid that adapts across devices with almost no media queries [1]. It's a small piece, kept intentionally small, that proves he understands the foundations that frameworks are built on.",
+      "human_pass": null,
+      "human_note": "",
+      "prior_turns": [
+        {
+          "role": "user",
+          "content": "I saw Samuel built a coffee landing page called Meridian. What is it?"
+        },
+        {
+          "role": "assistant",
+          "content": "Meridian is a polished, fully responsive brand landing page for a specialty-coffee brand, built from scratch in vanilla HTML, CSS, and JavaScript with no frameworks. It's live at meridian-landing-mu.vercel.app [projects/meridian.md]."
+        }
+      ]
+    },
+    {
+      "id": "q059",
+      "question": "Where is Samuel based? What city and time zone does he work out of?",
+      "expected_behavior": "refuse",
+      "key_facts": "The corpus does not give a city, country, or time zone. profile.md states only that he is open to remote engineering roles, so location must be refused.",
+      "assistant_reply": "I don't have that information in Samuel's documents. What I can tell you is that he is open to remote engineering roles [1], but the sources don't specify his city or time zone.\n\nIf location or time zone matters for your role, I'd suggest reaching out to Samuel directly:\n- GitHub: github.com/samchill93\n- LinkedIn: linkedin.com/in/therealsamhill",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q065",
+      "question": "Which programming language is Samuel's personal favorite to work in?",
+      "expected_behavior": "refuse",
+      "key_facts": "The corpus lists the languages he works in (JavaScript, TypeScript, Python) but never states a preference or favorite, so the bot must refuse to answer an opinion question it can't ground.",
+      "assistant_reply": "I don't have that information in the sources provided. The sources list the languages Samuel has shipped with — JavaScript, TypeScript, and Python [1] — but they don't say which one is his personal favorite.\n\nIf you're curious about his preferences or working style, I'd suggest reaching out to Samuel directly. You can find him on GitHub at github.com/samchill93 or LinkedIn at linkedin.com/in/therealsamhill.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q071",
+      "question": "Would Samuel be open to relocating to San Francisco for an on-site position?",
+      "expected_behavior": "refuse",
+      "key_facts": "profile.md says only that Samuel is open to remote engineering roles. It says nothing about relocation or on-site work, so the bot must refuse rather than infer willingness to relocate.",
+      "assistant_reply": "I don't have information about Samuel's willingness to relocate. The sources only mention that he is open to remote engineering roles [1].\n\nFor a question about relocating to San Francisco specifically, I'd recommend reaching out to Samuel directly:\n\n- GitHub: github.com/samchill93\n- LinkedIn: linkedin.com/in/therealsamhill\n\nHe'd be the best person to discuss location preferences with you.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q077",
+      "question": "I'm curious how Cadence and the Living Portfolio both keep the AI from making things up — do they use the same approach or different ones?",
+      "expected_behavior": "answer",
+      "key_facts": "Both are deliberately designed against hallucination but ground differently. Cadence grounds via an engineered system prompt (not RAG) because its knowledge base is small and bounded, with a clean refusal and human handoff when needed. The Living Portfolio uses RAG with visible source citations (Neon Postgres + pgvector), answering only from retrieved passages and refusing when the documents don't cover a question.",
+      "assistant_reply": "They use different approaches, each suited to their constraints.\n\nCadence [1] uses an engineered system prompt to ground its answers. The knowledge base is small and bounded — customer support documentation — so the team decided that retrieval would add latency and complexity without real accuracy gains. The system prompt is designed to refuse cleanly and hand off to a human when it doesn't know something, rather than guess. The philosophy is that a support bot that invents policy is worse than one that escalates [1].\n\nThe Living Portfolio [2] uses RAG — retrieval-augmented generation with a Neon Postgres + pgvector store. It retrieves the most relevant passages from Samuel's actual documents, answers only from them, and shows the sources it used. It also refuses when the documents don't cover a question.\n\nSo Cadence chose engineered refusal for a small, stable knowledge base, while the Living Portfolio chose RAG for a growing corpus of documents that need to be cited and kept in sync. Both are grounded against hallucination, but RAG gives you retrieval and visibility into sources, while the engineered prompt keeps things lean when the scope is tight.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q080",
+      "question": "For the consulting platform versus the Living Portfolio, where is each one deployed?",
+      "expected_behavior": "answer",
+      "key_facts": "The consulting platform is deployed on Google Cloud (Cloud Run) with CI/CD. The Living Portfolio's FastAPI backend is deployed on Render (always-on) and its site/chat widget is hosted on Vercel.",
+      "assistant_reply": "Great question — they're in different places.\n\nThe Consulting Platform [1] is a full-stack production app deployed on cloud infrastructure as part of client work, but the sources don't specify which cloud provider or hosting service it uses.\n\nThe Living Portfolio [2] has two deployments: the FastAPI backend runs on Render (always-on), and the chat widget and portfolio site are hosted on Vercel [2].\n\nIf you want the specific deployment details for the Consulting Platform, Samuel can fill those in — the sources just don't cover it.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q081",
+      "question": "Which of Samuel's projects handle payments, and which ones use Firebase?",
+      "expected_behavior": "answer",
+      "key_facts": "Only the consulting platform does either — it has Stripe payments and Firebase (Auth + Firestore) in production. None of his other documented projects (Cadence, Meridian, the Living Portfolio) use payments or Firebase.",
+      "assistant_reply": "Based on Samuel's shipped work:\n\nPayments: Samuel's consulting platform [1] handles payments — it was built with Stripe and shipped for a real client.\n\nFirebase: Two projects use Firebase:\n- The consulting platform [1] uses Firebase for Auth and Firestore\n- His Living Portfolio [2] doesn't use Firebase; it uses Neon PostgreSQL + pgvector for the database instead\n\nSo the consulting platform is the one that combines both — payments via Stripe and authentication/data storage via Firebase.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q084",
+      "question": "What frontend technologies has Samuel actually shipped with, and does he lean on a particular CSS framework?",
+      "expected_behavior": "answer",
+      "key_facts": "Shipped frontend technologies: React, Next.js, React Native (Expo), Tailwind CSS, and Vite. His CSS framework is Tailwind CSS.",
+      "assistant_reply": "Samuel has shipped with React, Next.js, React Native (Expo), and Tailwind CSS on the frontend [1]. He's also comfortable with Vite as a build tool [1].\n\nHe doesn't lean heavily on a CSS framework in his shipped work. In fact, with Meridian (his brand landing page), he deliberately chose vanilla HTML, CSS, and JavaScript with a CSS design-token system and fluid typography using clamp() — no framework at all [2]. That choice was intentional: he wanted to demonstrate frontend fundamentals and craft underneath what frameworks typically hide. The design reflows responsively via CSS Grid rather than sprawling media queries [2].\n\nSo while he has shipped with Tailwind, he's comfortable building without it too, and he values understanding the fundamentals that lie beneath frameworks.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q086",
+      "question": "So does he do the AI stuff, or more of the regular web-dev stuff?",
+      "expected_behavior": "answer",
+      "key_facts": "Both. Samuel builds production LLM/AI applications on the Claude API (Cadence, the Living Portfolio) and also ships full-stack and frontend web work (Meridian, the consulting platform). He's a full-stack AI engineer who works end to end.",
+      "assistant_reply": "Samuel does both — he's built as a Full-Stack AI Engineer [1], which means he ships the whole thing end to end, not just one layer.\n\nOn the AI side, he's shipped production LLM work with the Claude API, prompt engineering, and RAG systems with visible source citations using pgvector and embeddings [2]. He grounds LLM features in real data and designs against hallucination [1].\n\nOn the web-dev side, he's shipped a full consulting platform with authentication, payments, internationalization, automated tests, and CI/CD [3]. He knows React, Next.js, Node.js, Express, and deployment infrastructure [2].\n\nThe key thing: he doesn't just prototype. He takes LLM features all the way through — API, frontend, database, testing, and live deployment. His Living Portfolio project, currently in progress, is specifically designed to prove applied-AI skills like RAG and observability by building them in public [4].\n\nSo if you need someone who can build AI features that actually work in production, not just a prototype that impresses in a demo, that's his wheelhouse.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q087",
+      "question": "How many languages does he work in?",
+      "expected_behavior": "answer",
+      "key_facts": "The question is ambiguous. In programming languages, Samuel works in three: JavaScript, TypeScript, and Python. If it means spoken/UI languages, one project (the consulting platform) has a five-language internationalized UI.",
+      "assistant_reply": "I don't have that in Samuel's documents, so I can't answer it confidently. Ask me about his background, his shipped skills, or a specific project.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q091",
+      "question": "How does Cadence stack up against ChatGPT for customer support, and which one responds faster?",
+      "expected_behavior": "refuse",
+      "key_facts": "Must refuse: the corpus describes Cadence but says nothing about ChatGPT, and has no response-speed or latency benchmarks for either. The requested comparison cannot be grounded.",
+      "assistant_reply": "I don't have information in the sources about response times or direct comparisons between Cadence and ChatGPT.\n\nWhat I can tell you is how Cadence is designed: it's a specialized AI customer-support chatbot built on the Claude API [1]. The key difference from a general tool like ChatGPT is that Cadence is grounded to answer from a product's real knowledge base rather than making things up, and it hands off cleanly to a human when a question needs one — like billing issues [1]. Samuel engineered it to refuse best-guess answers in favor of escalation, because a support bot that invents policy is worse than one that escalates [1].\n\nFor specifics about performance or how it compares to other tools, I'd suggest reaching out to Samuel directly — he can walk you through a demo or answer detailed technical questions.",
+      "human_pass": null,
+      "human_note": ""
+    },
+    {
+      "id": "q094",
+      "question": "Got it. So under what circumstances would he actually add retrieval to it later?",
+      "expected_behavior": "answer",
+      "key_facts": "RAG is the documented next step for Cadence as its knowledge base / corpus grows; today the KB is small and bounded so retrieval would add latency without accuracy gains.",
+      "assistant_reply": "According to the source, RAG is documented as the next step as the corpus grows [1]. So Samuel would add it once the knowledge base becomes large enough that a system prompt alone isn't practical anymore — retrieval would then become worth the added latency and complexity.",
+      "human_pass": null,
+      "human_note": "",
+      "prior_turns": [
+        {
+          "role": "user",
+          "content": "Does Cadence use RAG?"
+        },
+        {
+          "role": "assistant",
+          "content": "No — Cadence grounds its answers with an engineered system prompt rather than RAG. Its knowledge base is small and bounded, so retrieval would add latency without improving accuracy."
+        }
+      ]
+    }
+  ]
+}

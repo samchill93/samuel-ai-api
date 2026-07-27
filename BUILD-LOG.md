@@ -82,3 +82,29 @@ was corrected to match (RAG marked shipped; the topology's inquiry flow no longe
 
 **Open at this entry:** threshold calibration, published eval numbers, and the
 Markdown-in-plain-text slip are Module 2 work. Teach-back for Module 1 still to pass.
+
+**2026-07-27 · Module 2 (in progress) — LLM evals: golden dataset, judge, and an eval-driven honesty fix ·**
+Built the evaluation engine for the RAG assistant. A 108-example golden dataset
+(`data/golden_dataset.json`, 66 answer / 42 refuse across six categories) was generated
+by a 12-agent workflow — six category generators plus six adversarial verifiers that
+checked every label against the corpus. `evals/harness.py` runs each example through the
+real pipeline and scores the objective dimensions: retrieval recall@5 = 0.992, citation
+validity 95/95 (zero fabricated citations). `evals/judge.py` adds an LLM-as-judge (Claude
+Sonnet 5 — stronger than the Haiku that writes the answers), scoring groundedness,
+behaviour correctness, and completeness on the actual replies, with the corpus sent as a
+cached prefix (~$0.20 per full run, ~350k tokens from cache): overall pass ~0.93, grounded
+~0.95, behaviour-correct 0.98. The judge caught a live honesty bug — asked "can he do
+streaming and Terraform?", the bot answered "yes, he's shipped them", when the corpus lists
+both as in progress. The grounding rule was strengthened, the fix re-measured and deployed,
+and verified on production (the bot now frames that work as in progress). `evals/calibrate.py`
+builds a blind hand-labeling slice and computes judge-vs-human agreement (raw + Cohen's
+kappa). Capabilities demonstrated: dataset construction with adversarial verification,
+objective retrieval/citation metrics, LLM-as-judge with prompt caching, and closing the
+full eval loop — measure, find a real bug, fix, re-measure, deploy, verify.
+
+**Open at this entry:** the calibration slice (`data/calibration_slice.json`, 24 items)
+awaits Samuel's hand labels — the senior signal ("judge agreement vs hand labels"). After
+calibration: a public Evals page with the numbers and the Module 2 case study. Judge
+scores show run-to-run variance (both generation and judging are non-deterministic), which
+is exactly why calibration and recurring-failure analysis matter more than a single run.
+
