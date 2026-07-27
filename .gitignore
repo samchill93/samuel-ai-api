@@ -12,3 +12,6 @@ venv/
 
 # Editor / OS
 .DS_Store
+
+# Eval run artifacts (regenerable; contain full bot replies)
+evals/results.json
