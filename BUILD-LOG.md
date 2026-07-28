@@ -318,3 +318,15 @@ stays **Authored, not Shipped**, because it still hasn't been `import`ed or `app
 infra — that needs real provider credentials. This is the validate/plan honesty loop applied to IaC:
 the config is now verified correct; only the credentialed steps remain.
 
+**2026-07-28 · Docker shipped — built and verified end to end ·** With Docker Desktop installed
+(per-user) and WSL 2 enabled, `docker compose up --build` was run on the real machine: the image
+built (base `python:3.12-slim` pulled, all dependencies installed in the cached layer, non-root
+`appuser` created, image exported), the container started and reported **`Up (healthy)`** — its
+`/health` HEALTHCHECK passing — and `GET /health` returned `{"status":"ok"}` (with `/version`
+responding too), then it was torn down cleanly. That is the verified build the roadmap held Docker's
+green badge for, so Docker moves from Authored to **Shipped**: the roadmap badge flips, skills.md
+lists containerization under shipped (re-ingested), the honesty guards updated, and the README's
+Docker section records the verification. The live Render service still deploys with its native Python
+build; the Dockerfile is the proven, reproducible container path. Only Terraform now remains Authored
+(validated, pending `import` + `apply`).
+

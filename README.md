@@ -169,9 +169,9 @@ docker run --rm -p 8000:8000 --env-file .env samuel-ai-api
 ```
 
 The live Render service currently deploys with its native Python build; the Dockerfile is the
-portable, reproducible alternative (and the path to a container-based deploy). Each build step is
-individually verified — dependency install and `uvicorn main:app` both run outside the container —
-but the full image build has not yet been run in the authoring environment, so Docker is not yet
+portable, reproducible alternative (and the path to a container-based deploy). **Verified:**
+`docker compose up --build` builds the image and starts the container, which reports healthy (its
+`/health` HEALTHCHECK passes) and answers `GET /health` with `{"status":"ok"}` — so Docker is
 marked shipped.
 
 ## Roadmap (the Living Portfolio)
@@ -187,4 +187,8 @@ marked shipped.
 - **MCP server** ✓ shipped — the same tools over the Model Context Protocol (stdio), verified with
   a real MCP client; add it to Claude Desktop (see below).
 - **Streaming** ✓ shipped — `POST /chat/stream` streams the answer token-by-token over SSE and the
-  chat widget types it live. Next: Docker, then Terraform.
+  chat widget types it live.
+- **Docker** ✓ shipped — a production Dockerfile (non-root, layer-cached, health-checked); the image
+  builds and runs healthy, verified via `docker compose up --build`.
+- **Terraform** — the stack as infrastructure-as-code; `terraform validate` passes against the real
+  providers, but it is not yet applied to the live infra (needs credentials + `terraform import`).
