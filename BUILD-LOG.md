@@ -307,3 +307,14 @@ re-measure (confirmed live).
 `/mcp` flag on Render, judge calibration, and teach-back remain — each needs an environment or input
 only Samuel can provide.
 
+**2026-07-28 · Terraform validated ·** Downloaded the Terraform CLI and ran `terraform init` +
+`terraform validate` against the real provider schemas (render-oss/render 1.9.1, kislerdm/neon 0.14.0,
+vercel/vercel 2.15.1). `init` succeeded — the provider source addresses and version constraints were
+correct — and `validate` caught one real bug: Render's `start_command` is a top-level attribute of
+`render_web_service`, not nested under `runtime_source.native_runtime`. Moved it out; `terraform
+validate` now returns "Success! The configuration is valid," and the provider lock file is committed.
+Terraform moves from authored to authored-and-validated (site note and README updated to match). It
+stays **Authored, not Shipped**, because it still hasn't been `import`ed or `apply`d against the live
+infra — that needs real provider credentials. This is the validate/plan honesty loop applied to IaC:
+the config is now verified correct; only the credentialed steps remain.
+
