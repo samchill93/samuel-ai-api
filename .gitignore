@@ -15,6 +15,7 @@ venv/
 
 # Eval run artifacts (regenerable; contain full bot replies)
 evals/results.json
+evals/judged.json
 
 # Terraform — never commit state (contains resolved secrets) or tfvars; keep the lock file
 terraform/.terraform/
