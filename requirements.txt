@@ -8,6 +8,7 @@ httpx>=0.27
 
 # RAG (Module 1): vector store + embeddings
 psycopg[binary]>=3.2
+psycopg-pool>=3.2
 pgvector>=0.3
 openai>=1.40
 email-validator>=2.0

@@ -11,12 +11,13 @@ The split matters: it lets the SQL, the pgvector operator, and the join to `docu
 be verified against the real database before an embedding provider is ever wired up.
 """
 
+import atexit
 import os
+import threading
 import time
 from pathlib import Path
 
 from dotenv import load_dotenv
-import psycopg
 from pgvector import Vector                     # wraps a list so it adapts as VECTOR, not float[]
 from pgvector.psycopg import register_vector
 
@@ -33,6 +34,39 @@ RETRIEVAL_K = 5
 MIN_SIMILARITY = 0.35
 
 
+# --- Connection pool ---------------------------------------------------------
+# Reuse database connections across requests instead of reconnecting every time. The Module 3
+# trace showed the per-request Neon connection — not the query — dominates retrieval latency
+# (~1.4s warm), so closely-spaced requests (the messages of one chat conversation) should share
+# a warm connection and skip that. Serverless-safe: `check` validates each connection on
+# checkout, so a connection Neon dropped while idle is replaced rather than handed out dead —
+# reliability is preserved, which is why this is safe on the live path.
+_pool = None
+_pool_lock = threading.Lock()
+
+
+def _get_pool():
+    """Lazily create the shared connection pool — not at import, so tests (and any code path)
+    that never touch the database never open a connection."""
+    global _pool
+    if _pool is None:
+        with _pool_lock:
+            if _pool is None:
+                from psycopg_pool import ConnectionPool
+                pool = ConnectionPool(
+                    conninfo=os.environ["DATABASE_URL"],
+                    min_size=0, max_size=4,                  # hold nothing when idle; a few under load
+                    max_idle=60,                             # recycle idle conns (Neon scales to zero)
+                    configure=register_vector,               # teach each connection the VECTOR type once
+                    check=ConnectionPool.check_connection,   # validate on checkout; replace dead ones
+                    timeout=15,
+                    open=True,
+                )
+                atexit.register(pool.close)                  # stop the pool's worker cleanly on exit
+                _pool = pool
+    return _pool
+
+
 def search(query_vector, k: int = RETRIEVAL_K) -> list[dict]:
     """Return the k chunks most cosine-similar to query_vector, best first.
 
@@ -47,8 +81,7 @@ def search(query_vector, k: int = RETRIEVAL_K) -> list[dict]:
         ORDER BY c.embedding <=> %(q)s          -- raw operator keeps the HNSW index usable
         LIMIT %(k)s
     """
-    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
-        register_vector(conn)  # teaches psycopg the VECTOR type for this connection
+    with _get_pool().connection() as conn:   # pooled + validated on checkout; VECTOR type pre-registered
         with conn.cursor() as cur:
             # Vector(...) so the value adapts as a vector; a bare list goes as float[].
             cur.execute(sql, {"q": Vector(query_vector), "k": k})
