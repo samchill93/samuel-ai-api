@@ -122,8 +122,12 @@ Measured live on the deployed API, minutes after a deploy (so the window is smal
   (~0.2s); cold, both are slow (OpenAI ~4s, Neon ~2s). A 1.3s warm database step on a 12-chunk
   table isn't the query — it's the per-request connection to Neon. The instrument found its own
   next target.
-- **Reuse the database connection** (a pooled/persistent connection instead of connect-per-
-  `search`) to kill the warm-connection tax the split just localized, then re-measure.
+- **Reuse the expensive connections — done, and re-measured.** `search` now checks out from a
+  connection pool that validates each connection on checkout (serverless-safe: a Neon-dropped idle
+  connection is replaced, not handed out dead), and the embedding client is created once and reused
+  so its HTTPS connection stays warm too. Live, across a conversation's back-to-back requests, warm
+  db time fell from ~1.7s to ~0.3s. The loop is closed end to end: measure → split → localize → fix
+  → re-measure.
 - **The glass-box panel (public after Module 6):** render a request's own trace on the site —
   retrieval vs model time, sources, similarity, cost — so a visitor watches the answer account
   for itself. The backend already returns everything it needs.

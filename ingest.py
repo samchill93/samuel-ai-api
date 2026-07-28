@@ -60,21 +60,36 @@ def chunk_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) 
 EMBED_PROVIDER = os.getenv("EMBED_PROVIDER", "openai")
 
 
-def embed(texts: list[str]) -> list[list[float]]:
-    if EMBED_PROVIDER == "openai":
-        from openai import OpenAI
+# The embedding client is created once and reused, so its underlying HTTPS connection pool is
+# kept warm across requests — the same "reuse the expensive connection" idea as the DB pool in
+# retrieve.py. Created lazily (not at import) so nothing connects until the first embed call.
+_embed_client = None
 
-        client = OpenAI()  # reads OPENAI_API_KEY from the environment
+
+def _get_embed_client():
+    global _embed_client
+    if _embed_client is None:
+        if EMBED_PROVIDER == "openai":
+            from openai import OpenAI
+
+            _embed_client = OpenAI()  # reads OPENAI_API_KEY from the environment
+        elif EMBED_PROVIDER == "voyage":
+            import voyageai
+
+            _embed_client = voyageai.Client()  # reads VOYAGE_API_KEY from the environment
+        else:
+            raise ValueError(f"Unknown EMBED_PROVIDER: {EMBED_PROVIDER!r} (use 'openai' or 'voyage')")
+    return _embed_client
+
+
+def embed(texts: list[str]) -> list[list[float]]:
+    client = _get_embed_client()
+    if EMBED_PROVIDER == "openai":
         model = os.getenv("EMBED_MODEL", "text-embedding-3-small")
         resp = client.embeddings.create(model=model, input=texts)
         return [item.embedding for item in resp.data]
-    if EMBED_PROVIDER == "voyage":
-        import voyageai
-
-        client = voyageai.Client()  # reads VOYAGE_API_KEY from the environment
-        model = os.getenv("EMBED_MODEL", "voyage-3")
-        return client.embed(texts, model=model, input_type="document").embeddings
-    raise ValueError(f"Unknown EMBED_PROVIDER: {EMBED_PROVIDER!r} (use 'openai' or 'voyage')")
+    model = os.getenv("EMBED_MODEL", "voyage-3")
+    return client.embed(texts, model=model, input_type="document").embeddings
 
 
 # --- Ingestion ------------------------------------------------------------

@@ -290,3 +290,20 @@ four tools, and calls one at `/mcp` (server `samuel-portfolio`, protocol 2025-11
 LLM-endpoint rate limiter, so it should be throttled before being exposed widely — part of why it
 ships off rather than on.
 
+**2026-07-28 · Perf — reuse the expensive connections; the retrieval loop closes ·** Acting on the
+finding the embed/db split localized (the per-request Neon connection, not the query, dominated
+retrieval), `retrieve.search` now checks out from a lazily-created connection pool instead of
+reconnecting per call, and the OpenAI embedding client is created once and reused so its HTTPS
+connection stays warm too. Reliability is kept, not traded: the pool's `check=check_connection`
+validates every checkout, so a connection Neon dropped while idle is replaced rather than handed out
+dead. Re-measured live across a conversation's back-to-back requests: warm db time fell from ~1.7s to
+~0.3s (warm retrieval from ~6.5s cold to ~0.5s) — the follow-up messages, the common case, got several
+times faster. Both clients open lazily (nothing connects at import) and the pool closes cleanly via
+`atexit`; 62 tests pass. This closes the observability loop end to end: measure (retrieval dominates)
+-> refine the instrument (embed vs db) -> localize (the connection) -> fix (pool + client reuse) ->
+re-measure (confirmed live).
+
+**Open at this entry:** Docker (`docker build`), Terraform (`validate`/`import`/`plan`), the hosted
+`/mcp` flag on Render, judge calibration, and teach-back remain — each needs an environment or input
+only Samuel can provide.
+
