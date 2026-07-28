@@ -1,10 +1,13 @@
 # Terraform — the stack as infrastructure-as-code (Module 8)
 
-**Status: authored, not yet applied.** This codifies the Living Portfolio infrastructure — the
-Render backend, the Neon Postgres database, and the Vercel site — as Terraform. It has **not**
-been validated, planned, or applied in the authoring environment (Terraform isn't installed
-there, and applying needs real provider credentials). Treat it as a reviewed starting point,
-not verified infrastructure — which is why the roadmap does **not** mark Terraform shipped.
+**Status: authored and validated, not yet applied.** This codifies the Living Portfolio
+infrastructure — the Render backend, the Neon Postgres database, and the Vercel site — as
+Terraform. `terraform init` + `terraform validate` **pass** against the real provider schemas
+(render-oss/render 1.9.1, kislerdm/neon 0.14.0, vercel/vercel 2.15.1) — and validating caught and
+fixed a real attribute-placement bug (Render's `start_command` is a top-level attribute, not
+nested under `native_runtime`). It has **not** yet been `plan`ned or `apply`d — that needs real
+provider credentials — and adopting the existing infra still needs `terraform import`. So the
+roadmap does **not** mark Terraform shipped until an import + plan round-trips clean.
 
 ## The one thing to get right first
 
@@ -41,9 +44,9 @@ adjust the resource attributes in `main.tf` to match what `import` pulls in.
 
 ## Honest caveats
 
-- **Not validated.** Provider attribute names (especially Render's `runtime_source` / `env_vars`
-  shapes and Neon's connection-string output) are written from the providers' docs and must be
-  confirmed with `terraform validate` before use.
+- **Validated (config), not applied.** `terraform validate` passes against the installed provider
+  schemas, so the attribute names are confirmed correct. What's still unverified is only what needs
+  real credentials and the live APIs: `plan`, `import`, and `apply`.
 - **Schema is app-owned.** Terraform provisions the Neon database; the pgvector extension and the
   `documents` / `chunks` / `inquiries` tables are applied by `apply_schema.py`, not Terraform.
 - **Secrets never in code.** No `.tfvars` is committed; the state file (which contains resolved

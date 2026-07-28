@@ -60,9 +60,10 @@ resource "neon_project" "portfolio" {
 
 # --- Render: the FastAPI backend ---------------------------------------------------------
 resource "render_web_service" "api" {
-  name   = "samuel-ai-api"
-  plan   = "free"
-  region = "oregon"
+  name          = "samuel-ai-api"
+  plan          = "free"
+  region        = "oregon"
+  start_command = "uvicorn main:app --host 0.0.0.0 --port $PORT" # top-level per the render provider schema
 
   runtime_source = {
     native_runtime = {
@@ -71,7 +72,6 @@ resource "render_web_service" "api" {
       branch        = "main"
       auto_deploy   = true
       build_command = "pip install -r requirements.txt"
-      start_command = "uvicorn main:app --host 0.0.0.0 --port $PORT"
     }
   }
 
