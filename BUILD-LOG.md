@@ -330,3 +330,26 @@ Docker section records the verification. The live Render service still deploys w
 build; the Dockerfile is the proven, reproducible container path. Only Terraform now remains Authored
 (validated, pending `import` + `apply`).
 
+
+**2026-07-29 · Terraform shipped — Terraform now manages the live stack (import + clean plan) ·**
+With real provider credentials supplied via `.env` (never committed; loaded into `TF_VAR_*` at
+runtime, values never printed), all three live resources were adopted into Terraform: the Render
+web service, the Neon Postgres project, and the Vercel site were each `terraform import`ed into
+state, then the config was reconciled to the real infrastructure until `terraform plan` reported
+**"No changes."** — a clean round-trip. Reconciliation caught several drifts between the authored
+guesses and reality: the Render plan was `starter` (not `free` — applying the guess would have
+downgraded production), Postgres was v18 (not 16), the Neon project was named `samuel-ai-api` (not
+`samuel-portfolio`), `PYTHON_VERSION=3.13.4` was a live env var while `CORS_ORIGINS` is deliberately
+unset in prod, and Vercel's protection/OIDC settings had to be mirrored. Two attributes sit under a
+documented `ignore_changes`: Render's `environment_id` (assigned by Render, not hydrated on import)
+and Vercel's `vercel_authentication` (the provider *reads* the API value `all_except_custom_domains`
+but only *accepts* its own enum `standard_protection` — same setting, two vocabularies). The Neon
+API's `org_id`-required 400 was diagnosed (an org-scoped key) and worked around by importing via the
+explicit project id. **No `terraform apply` was ever run against production** — the resources predate
+Terraform, so they were adopted via import, and a clean plan means there is nothing to apply. State
+holds resolved secrets and is git-ignored. Terraform moves from Authored to **Shipped**: roadmap
+badge flips green, skills.md lists IaC under shipped (re-ingested), honesty guards updated (all 62
+tests pass), README + both guides record the verified import/clean-plan. That closes Module 8 and the
+numbered roadmap. Capabilities demonstrated: importing hand-built infra into IaC without a destructive
+apply, reading provider schemas to reconcile real drift, diagnosing a provider-API auth quirk, and
+holding the "Shipped means verified" line — Terraform stayed amber until the plan actually round-tripped.

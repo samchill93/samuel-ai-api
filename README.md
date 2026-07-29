@@ -190,5 +190,8 @@ marked shipped.
   chat widget types it live.
 - **Docker** ✓ shipped — a production Dockerfile (non-root, layer-cached, health-checked); the image
   builds and runs healthy, verified via `docker compose up --build`.
-- **Terraform** — the stack as infrastructure-as-code; `terraform validate` passes against the real
-  providers, but it is not yet applied to the live infra (needs credentials + `terraform import`).
+- **Terraform** ✓ shipped — the whole stack as infrastructure-as-code across three real providers
+  (Render web service, Neon Postgres, Vercel site). All three resources are `terraform import`ed
+  into state and `terraform plan` round-trips **clean** ("No changes.") against the live infra, so
+  Terraform now manages the running stack. No `apply` touched production — the resources predate
+  Terraform and were adopted via import; state (which holds resolved secrets) is git-ignored.

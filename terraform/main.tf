@@ -1,18 +1,22 @@
-# Infrastructure-as-code for the Living Portfolio stack (Module 8) — AUTHORED, NOT YET APPLIED.
+# Infrastructure-as-code for the Living Portfolio stack (Module 8) — MANAGING THE LIVE STACK.
 #
-# HONEST STATUS: this codifies the stack (Render web service, Neon Postgres, Vercel site) as
-# Terraform, but it has NOT been `terraform validate`d, `plan`ned, or `apply`d in the authoring
-# environment (Terraform isn't installed here, and applying needs real provider credentials). It
-# is a reviewed starting point written from the providers' docs — confirm every attribute with
-# `terraform validate` before relying on it.
+# STATUS: this codifies the running stack (Render web service, Neon Postgres, Vercel site) as
+# Terraform across the three real providers. All three resources have been `terraform import`ed
+# into state, and `terraform plan` round-trips clean ("No changes.") against the live
+# infrastructure — so Terraform now manages the real stack.
 #
-# CRITICAL: the Render service, Neon project, and Vercel project ALREADY EXIST (they were created
-# by hand as the modules shipped). A fresh `terraform apply` would try to CREATE DUPLICATES. To
-# adopt the real infrastructure, `terraform import` each resource first (see terraform/README.md),
-# then `plan` should show no changes. Do not apply against the live stack until an import + plan
-# round-trips clean.
+# No `terraform apply` was run against production: the resources predate Terraform (they were
+# created by hand as the modules shipped), so they were ADOPTED via import rather than created,
+# and a clean plan means there is nothing to apply. See terraform/README.md to reproduce the
+# import + plan; provider versions are pinned in .terraform.lock.hcl.
+#
+# Two attributes are intentionally under `ignore_changes` (documented inline at each resource):
+# Render's `environment_id` (assigned by Render's environments feature, not hydrated on import)
+# and Vercel's `vercel_authentication` (the provider reads the API's value "all_except_custom_
+# domains" but only accepts its own enum "standard_protection" — same setting, two vocabularies).
 #
 # Secrets are never in this file: they come from TF_VAR_* environment variables (see variables.tf).
+# terraform.tfstate is git-ignored because it holds resolved secret values.
 
 terraform {
   required_version = ">= 1.6"
@@ -50,9 +54,10 @@ provider "vercel" {
 
 # --- Neon: the Postgres database behind the RAG vector store ------------------------------
 resource "neon_project" "portfolio" {
-  name       = "samuel-portfolio"
-  region_id  = "aws-us-east-1"
-  pg_version = 16
+  name                      = "samuel-ai-api"
+  region_id                 = "aws-us-east-1"
+  pg_version                = 18
+  history_retention_seconds = 21600 # match the live project (6h); the provider default is 24h
 }
 
 # The pgvector extension and the schema (documents / chunks / inquiries) are applied by
@@ -61,7 +66,7 @@ resource "neon_project" "portfolio" {
 # --- Render: the FastAPI backend ---------------------------------------------------------
 resource "render_web_service" "api" {
   name          = "samuel-ai-api"
-  plan          = "free"
+  plan          = "starter"
   region        = "oregon"
   start_command = "uvicorn main:app --host 0.0.0.0 --port $PORT" # top-level per the render provider schema
 
@@ -76,12 +81,20 @@ resource "render_web_service" "api" {
   }
 
   # Secrets are injected here from variables, never committed. DATABASE_URL points at the Neon
-  # project above (its exact connection-string attribute name is provider-specific — confirm it).
+  # project above. These four keys mirror the live service exactly (CORS_ORIGINS is deliberately
+  # unset in production, which locks CORS to the built-in allowlist).
   env_vars = {
     ANTHROPIC_API_KEY = { value = var.anthropic_api_key }
     OPENAI_API_KEY    = { value = var.openai_api_key }
     DATABASE_URL      = { value = var.database_url }
-    CORS_ORIGINS      = { value = var.cors_origins }
+    PYTHON_VERSION    = { value = "3.13.4" }
+  }
+
+  # environment_id is assigned by Render's "environments" feature and isn't hydrated on import;
+  # leave it as the platform set it so an adopted service round-trips clean (the other
+  # computed attributes only showed "known after apply" as a reaction to this one real diff).
+  lifecycle {
+    ignore_changes = [environment_id]
   }
 }
 
@@ -94,5 +107,25 @@ resource "vercel_project" "site" {
     type              = "github"
     repo              = "samchill93/living-portfolio"
     production_branch = "main"
+  }
+
+  # Mirror the live project's protection settings so an import + plan round-trips clean.
+  # The provider's "standard_protection" is Vercel's "all deployments except production
+  # custom domains" (API deploymentType: all_except_custom_domains).
+  vercel_authentication = {
+    deployment_type = "standard_protection"
+  }
+  oidc_token_config = {
+    enabled     = true
+    issuer_mode = "team"
+  }
+
+  enable_affected_projects_deployments = true
+
+  # The provider reads Vercel's API value ("all_except_custom_domains") into state but only
+  # accepts its own enum ("standard_protection") in config — the same setting, two vocabularies.
+  # Ignore drift on it so the adopted project round-trips clean instead of showing a perpetual diff.
+  lifecycle {
+    ignore_changes = [vercel_authentication]
   }
 }
