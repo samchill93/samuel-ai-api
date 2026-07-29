@@ -80,10 +80,11 @@ Portfolio site (frontend)
 - **`schema.sql` / `apply_schema.py`** — `documents`, `chunks` (with the HNSW vector index),
   and `inquiries`; idempotent to apply.
 - **`corpus/`** — the markdown documents the bot answers from (its claims surface).
-- **`test_main.py` / `test_retrieve.py` / `test_rag.py` / `test_obs.py` / `test_agent.py` / `test_mcp.py`** —
-  pytest suite (56 tests): chunking, the grounding/refusal decision, citation renumbering/dedup/snippets,
-  honesty guards, the SSE event format, the observability registry + middleware, the agent tools + loop
-  (fake client, no network), and the MCP server (tools listed and called over a real in-memory session).
+- **`test_main.py` / `test_retrieve.py` / `test_rag.py` / `test_obs.py` / `test_agent.py` / `test_mcp.py` / `test_ratelimit.py`** —
+  pytest suite (62 tests): chunking, the grounding/refusal decision, citation renumbering/dedup/snippets,
+  honesty guards, the SSE event format, the observability registry + middleware, the rate limiter, the
+  agent tools + loop (fake client, no network), and the MCP server (tools listed and called over a real
+  in-memory session).
 
 ## Built with
 
