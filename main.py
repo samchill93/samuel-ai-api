@@ -60,10 +60,11 @@ else:
     app = FastAPI(title="Ask Me About Samuel")
 
 # CORS controls which websites may call this API from a browser. Production is locked to the
-# live portfolio site. Local development adds localhost origins through the CORS_ORIGINS
-# environment variable (set in .env, which is git-ignored). The default below is exactly the
-# production lock, so nothing changes in prod unless CORS_ORIGINS is set there deliberately.
-DEFAULT_ORIGINS = "https://living-portfolio-chi.vercel.app"
+# live portfolio site — the custom domain (apex + www) and the original vercel.app URL. Local
+# development adds localhost origins through the CORS_ORIGINS environment variable (set in .env,
+# which is git-ignored). The default below is exactly the production lock, so nothing changes in
+# prod unless CORS_ORIGINS is set there deliberately.
+DEFAULT_ORIGINS = "https://samuelhill.online,https://www.samuelhill.online,https://living-portfolio-chi.vercel.app"
 allowed_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", DEFAULT_ORIGINS).split(",") if o.strip()]
 
 app.add_middleware(
