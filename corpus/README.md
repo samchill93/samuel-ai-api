@@ -17,9 +17,12 @@ its sources as citations.
   finished, or as past client experience.
 - **No fabricated numbers.** Every metric carries its source. If a number doesn't exist yet, leave
   it out — don't invent one.
-- Keep the title accurate: **Full-Stack AI Engineer** (the "Agentic" upgrade is earned later).
+- Keep the title accurate: **Full-Stack Agentic AI Engineer** — the "Agentic" upgrade was
+  earned when the tool-using agent and the MCP server shipped (Modules 4–5); the site, résumé,
+  and `profile.md` all use it, so keep them consistent.
 
 ## File layout
 - `profile.md` — who Samuel is, background, and what he's looking for.
 - `skills.md` — shipped skills, and a clearly separate "currently building" section.
+- `experience.md` — structured work history (roles, dates, what he owned) for citation.
 - `projects/*.md` — one file per project, each with an honest scope of what's shipped.
