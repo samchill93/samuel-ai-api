@@ -23,3 +23,7 @@ terraform/*.tfstate
 terraform/*.tfstate.*
 terraform/*.tfvars
 terraform/crash.log
+
+# Private job-search materials — NEVER commit (target list, cover letters, salary scripts,
+# LinkedIn copy). Personal + strategic; must not appear on the public GitHub repo.
+job-kit/
